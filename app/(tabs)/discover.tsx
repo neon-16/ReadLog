@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { Search } from 'lucide-react-native';
-import { discoverBooks } from '../../constants/mockData';
-import { getGenreIcon } from '../../utils/genreIcons';
+import { useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import AppHeader from '../../components/shared/AppHeader';
 import BookCover from '../../components/shared/BookCover';
+import { discoverBooks } from '../../constants/mockData';
+import { showAlert } from '../../utils/alert';
 
 function BookItem({ book }: { book: typeof discoverBooks[0] }) {
   const [isAdded, setIsAdded] = useState(false);
 
   const handleAdd = () => {
     setIsAdded(true);
-    Alert.alert(
+    showAlert(
       'Added to Library',
       "Book added as 'Want to Read'.",
       [{ text: 'OK', onPress: () => router.push('/(tabs)/home') }]

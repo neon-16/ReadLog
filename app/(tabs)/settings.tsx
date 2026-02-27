@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { BookOpen, Database, Info, Trash2 } from 'lucide-react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/shared/Button';
+import { showActionSheet, showAlert } from '../../utils/alert';
 
 function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: string; onStatusChange: (status: string) => void }) {
   const handleSelectStatus = () => {
-    Alert.alert(
+    showActionSheet(
       'Default Book Status',
       'Choose the default status for new books:',
       [
@@ -33,7 +34,7 @@ export default function Settings() {
   const [defaultStatus, setDefaultStatus] = useState('Reading');
 
   const handleClearBooks = () => {
-    Alert.alert(
+    showAlert(
       'Clear All Books',
       'This will permanently delete your entire reading history. This action cannot be undone.',
       [

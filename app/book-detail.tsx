@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Save, RefreshCw, Trash2 } from 'lucide-react-native';
-import { mockBook } from '../constants/mockData';
-import ProgressBar from '../components/shared/ProgressBar';
+import { ArrowLeft, RefreshCw, Save, Trash2 } from 'lucide-react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import BookCover from '../components/shared/BookCover';
 import Button from '../components/shared/Button';
 import DeleteModal from '../components/shared/DeleteModal';
-import BookCover from '../components/shared/BookCover';
+import ProgressBar from '../components/shared/ProgressBar';
+import { mockBook } from '../constants/mockData';
+import { showActionSheet } from '../utils/alert';
 
 export default function BookDetail() {
   const [currentPage, setCurrentPage] = useState(mockBook.currentPage.toString());
@@ -21,7 +22,7 @@ export default function BookDetail() {
   };
 
   const handleChangeStatus = () => {
-    Alert.alert(
+    showActionSheet(
       'Change Status',
       'Select the new status for this book:',
       [
@@ -84,7 +85,7 @@ export default function BookDetail() {
         </Pressable>
 
         <View style={styles.coverContainer}>
-          <BookCover size="large" />
+          <BookCover genre={mockBook.genre} size="large" />
         </View>
 
         <View style={styles.titleSection}>

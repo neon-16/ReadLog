@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, Alert } from 'react-native';
 import { router } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 // Mock Online Books Data
 const onlineBooks = [
@@ -49,7 +48,7 @@ const onlineBooks = [
 // Book Item Component
 function BookItem({ book }: { book: typeof onlineBooks[0] }) {
   const handleAddBook = () => {
-    Alert.alert('Book Added', 'Book added to your library.', [
+    showAlert('Book Added', 'Book added to your library.', [
       {
         text: 'OK',
         onPress: () => router.back(),

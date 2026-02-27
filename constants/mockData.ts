@@ -3,6 +3,7 @@ export const mockBook = {
   author: 'James Clear',
   currentPage: 195,
   totalPages: 300,
+  genre: 'Self-Help',
   description: 'Transform your life with tiny changes. This book explores how small, consistent habits can lead to remarkable results over time. James Clear breaks down the science of habit formation and provides practical strategies for building good habits and breaking bad ones.',
 };
 

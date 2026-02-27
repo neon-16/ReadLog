@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Save, Info } from 'lucide-react-native';
-import Input from '../components/shared/Input';
+import { Info, Save } from 'lucide-react-native';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import AppHeader from '../components/shared/AppHeader';
 import Button from '../components/shared/Button';
 import GenreSelector from '../components/shared/GenreSelector';
+import Input from '../components/shared/Input';
 import StatusSelector from '../components/shared/StatusSelector';
-import AppHeader from '../components/shared/AppHeader';
+import { showAlert } from '../utils/alert';
 
 export default function AddManual() {
   const [title, setTitle] = useState('');
@@ -17,22 +18,22 @@ export default function AddManual() {
 
   const handleAddBook = () => {
     if (!title.trim()) {
-      Alert.alert('Validation Error', 'Please enter a book title.');
+      showAlert('Validation Error', 'Please enter a book title.');
       return;
     }
     if (!author.trim()) {
-      Alert.alert('Validation Error', 'Please enter an author name.');
+      showAlert('Validation Error', 'Please enter an author name.');
       return;
     }
     if (!totalPages.trim()) {
-      Alert.alert('Validation Error', 'Please enter total pages.');
+      showAlert('Validation Error', 'Please enter total pages.');
       return;
     }
 
     const bookData = { title, author, totalPages, status, genre };
     console.log('Book saved:', bookData);
 
-    Alert.alert('Book Added', 'Your book has been added to your reading shelf.', [
+    showAlert('Book Added', 'Your book has been added to your reading shelf.', [
       { text: 'OK', onPress: () => router.push('/(tabs)/home') },
     ]);
   };
