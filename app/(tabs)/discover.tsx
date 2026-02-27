@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -14,8 +13,7 @@ function BookItem({ book }: { book: typeof discoverBooks[0] }) {
     setIsAdded(true);
     showAlert(
       'Added to Library',
-      "Book added as 'Want to Read'.",
-      [{ text: 'OK', onPress: () => router.push('/(tabs)/home') }]
+      "Book added as 'Want to Read'."
     );
   };
 
@@ -104,8 +102,15 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   searchIcon: {
     position: 'absolute',
@@ -115,7 +120,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 48,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     paddingLeft: 48,
     paddingRight: 16,

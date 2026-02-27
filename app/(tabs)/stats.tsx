@@ -1,8 +1,7 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Library, CheckCircle, Bookmark, BookOpen } from 'lucide-react-native';
-import { statsData, readingGoal } from '../../constants/mockData';
-import AppHeader from '../../components/shared/AppHeader';
+import { Bookmark, BookOpen, CheckCircle, Library } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import ProgressBar from '../../components/shared/ProgressBar';
+import { readingGoal, statsData } from '../../constants/mockData';
 
 function StatCard({ 
   title, 
@@ -30,11 +29,8 @@ export default function Stats() {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <AppHeader />
-
-        <View style={styles.titleSection}>
-          <Text style={styles.pageTitle}>Reading Stats</Text>
-          <Text style={styles.pageSubtitle}>Track your progress and achievements.</Text>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Reading Stats</Text>
         </View>
 
         <View style={styles.statsGrid}>
@@ -81,20 +77,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
-  titleSection: {
+  header: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#F3F4F6',
   },
-  pageTitle: {
+  headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#6B7280',
   },
   statsGrid: {
     flexDirection: 'row',
