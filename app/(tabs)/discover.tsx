@@ -25,6 +25,9 @@ function BookItem({ book }: { book: typeof discoverBooks[0] }) {
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+        <View style={styles.genreBadge}>
+          <Text style={styles.genreText}>{book.genre.toUpperCase()}</Text>
+        </View>
       </View>
       <Pressable 
         style={[styles.addButton, isAdded && styles.addedButton]} 
@@ -168,6 +171,30 @@ const styles = StyleSheet.create({
   },
   bookAuthor: {
     fontSize: 14,
+    fontWeight: '400',
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  genreBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  genreText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
+  pagesText: {
+    fontSize: 12,
     fontWeight: '400',
     color: '#6B7280',
   },

@@ -45,36 +45,42 @@ export const discoverBooks = [
     title: 'The Midnight Library',
     author: 'Matt Haig',
     genre: 'Fiction',
+    totalPages: 304,
   },
   {
     id: '2',
     title: 'Project Hail Mary',
     author: 'Andy Weir',
     genre: 'Science',
+    totalPages: 476,
   },
   {
     id: '3',
     title: 'The Psychology of Money',
     author: 'Morgan Housel',
     genre: 'Self-Help',
+    totalPages: 256,
   },
   {
     id: '4',
     title: 'Thinking, Fast and Slow',
     author: 'Daniel Kahneman',
     genre: 'Science',
+    totalPages: 499,
   },
   {
     id: '5',
     title: 'The Lean Startup',
     author: 'Eric Ries',
     genre: 'Productivity',
+    totalPages: 336,
   },
   {
     id: '6',
     title: 'Sapiens',
     author: 'Yuval Noah Harari',
     genre: 'Science',
+    totalPages: 443,
   },
 ];
 
