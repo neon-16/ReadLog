@@ -30,30 +30,18 @@ export default function BookDetail() {
           text: 'Reading',
           onPress: () => {
             setStatus('Reading');
-            router.push({
-              pathname: '/status-updated',
-              params: { bookTitle: mockBook.title, status: 'Reading' },
-            });
           },
         },
         {
           text: 'Completed',
           onPress: () => {
             setStatus('Completed');
-            router.push({
-              pathname: '/status-updated',
-              params: { bookTitle: mockBook.title, status: 'Completed' },
-            });
           },
         },
         {
           text: 'Want to Read',
           onPress: () => {
             setStatus('Want to Read');
-            router.push({
-              pathname: '/status-updated',
-              params: { bookTitle: mockBook.title, status: 'Want to Read' },
-            });
           },
         },
         {
@@ -83,6 +71,10 @@ export default function BookDetail() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color="#2563EB" strokeWidth={2} />
         </Pressable>
+
+        <View style={styles.headerSection}>
+          <Text style={styles.headerTitle}>Book Detail</Text>
+        </View>
 
         <View style={styles.coverContainer}>
           <BookCover genre={mockBook.genre} size="large" />
@@ -150,7 +142,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 8,
+  },
+  headerSection: {
+    paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
   },
   coverContainer: {
     alignItems: 'center',

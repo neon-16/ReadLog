@@ -33,9 +33,10 @@ export default function AddManual() {
     const bookData = { title, author, totalPages, status, genre };
     console.log('Book saved:', bookData);
 
-    showAlert('Book Added', 'Your book has been added to your reading shelf.', [
-      { text: 'OK', onPress: () => router.push('/(tabs)/home') },
-    ]);
+    router.push({
+      pathname: '/book-added-successfully',
+      params: { bookTitle: title },
+    });
   };
 
   return (
