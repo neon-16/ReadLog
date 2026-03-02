@@ -1,17 +1,18 @@
-import { View, Text, StyleSheet, Pressable, FlatList, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Plus } from 'lucide-react-native';
-import { activeBooks, recentlyFinished } from '../../constants/mockData';
-import { getGenreIcon } from '../../utils/genreIcons';
 import AppHeader from '../../components/shared/AppHeader';
 import ProgressBar from '../../components/shared/ProgressBar';
 import BookCover from '../../components/shared/BookCover';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useHomeData } from '@/src/features/books/hooks/useHomeData';
+import OfflineBanner from '@/src/core/components/OfflineBanner';
 
-function BookCard({ book, isFinished }: { book: typeof activeBooks[0]; isFinished?: boolean }) {
+function BookCard({ book, isFinished }: { book: any; isFinished?: boolean }) {
   return (
     <Pressable
       style={[styles.bookCard, isFinished && styles.finishedCard]}
-      onPress={() => router.push('/book-detail')}
+      onPress={() => router.push({pathname: '/book-detail', params: {bookId: book.id}})}
     >
       <BookCover genre={book.genre} size="small" />
       <View style={styles.bookInfo}>
@@ -27,30 +28,123 @@ function BookCard({ book, isFinished }: { book: typeof activeBooks[0]; isFinishe
 }
 
 export default function Home() {
+  const { user } = useAuth();
+  const {
+    profile,
+    readingBooks,
+    wantToReadBooks,
+    finishedBooks,
+    loading,
+    refreshing,
+    error,
+    fetchBooks,
+  } = useHomeData(user);
+
   return (
     <View style={styles.container}>
       <AppHeader showSearch />
+      <OfflineBanner />
 
-      <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitle}>{activeBooks.length} BOOKS ACTIVE</Text>
+      {/* Welcome Section */}
+      <View style={styles.welcomeSection}>
+        <Text style={styles.welcomeText}>Welcome, {profile?.displayName || 'User'}! 👋</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Books</Text>
-          <FlatList
-            data={activeBooks}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <BookCard book={item} />}
-            scrollEnabled={false}
-          />
-        </View>
+      <View style={styles.subtitleContainer}>
+        <Text style={styles.subtitle}>{readingBooks.length} BOOKS ACTIVE</Text>
+        {refreshing && <Text style={styles.refreshingText}>Refreshing...</Text>}
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recently Finished</Text>
-          <BookCard book={recentlyFinished} isFinished />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
         </View>
-      </ScrollView>
+      ) : error ? (
+        <ScrollView contentContainerStyle={styles.errorContainer} showsVerticalScrollIndicator={false}>
+          <Text style={{ color: '#EF4444', marginBottom: 12, fontSize: 16, fontWeight: '600' }}>
+            Error Loading Books
+          </Text>
+          <View style={{ backgroundColor: '#FEE2E2', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+            <Text style={{ color: '#991B1B', fontSize: 13, lineHeight: 18 }}>
+              {error}
+            </Text>
+          </View>
+          <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 16 }}>
+            Check that:
+          </Text>
+          <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 4 }}>
+            • Firestore database is created in Firebase Console
+          </Text>
+          <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 4 }}>
+            • Security rules are properly configured
+          </Text>
+          <Text style={{ color: '#6B7280', fontSize: 13, marginBottom: 16 }}>
+            • You are logged in to the correct account
+          </Text>
+          <TouchableOpacity onPress={() => fetchBooks(true)} style={styles.retryButton}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Section 1: ACTIVE BOOKS */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Active Books</Text>
+            {readingBooks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  No active books. Start reading something!
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={readingBooks}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <BookCard book={item} />}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
+
+          {/* Section 2: WANT TO READ */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Want to Read</Text>
+            {wantToReadBooks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  No books in your reading list yet.
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={wantToReadBooks}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <BookCard book={item} />}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
+
+          {/* Section 3: RECENTLY FINISHED */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recently Finished</Text>
+            {finishedBooks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  No finished books yet. Keep reading!
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={finishedBooks}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => <BookCard book={item} isFinished />}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
+        </ScrollView>
+      )}
 
       <Pressable style={styles.fab} onPress={() => router.push('/add-manual')}>
         <Plus size={24} color="#FFFFFF" strokeWidth={2.5} />
@@ -64,6 +158,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
+  welcomeSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
+  },
   subtitleContainer: {
     paddingHorizontal: 20,
     paddingBottom: 16,
@@ -74,6 +180,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2563EB',
     letterSpacing: 1,
+  },
+  refreshingText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#6B7280',
   },
   section: {
     paddingHorizontal: 20,
@@ -147,5 +258,42 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     zIndex: 999,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyState: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });

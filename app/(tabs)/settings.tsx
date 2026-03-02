@@ -1,9 +1,8 @@
-import { router } from 'expo-router';
-import { BookOpen, Database, Info, Trash2 } from 'lucide-react-native';
-import { useState } from 'react';
+import { BookOpen, Database, Info, LogOut, Trash2 } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/shared/Button';
-import { showActionSheet, showAlert } from '../../utils/alert';
+import { showActionSheet } from '../../utils/alert';
+import { useSettingsActions } from '@/src/features/settings/hooks/useSettingsActions';
 
 function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: string; onStatusChange: (status: string) => void }) {
   const handleSelectStatus = () => {
@@ -31,18 +30,7 @@ function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: st
 }
 
 export default function Settings() {
-  const [defaultStatus, setDefaultStatus] = useState('Reading');
-
-  const handleClearBooks = () => {
-    showAlert(
-      'Clear All Books',
-      'This will permanently delete your entire reading history. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete All', style: 'destructive', onPress: () => router.push('/data-cleared') },
-      ]
-    );
-  };
+  const { defaultStatus, setDefaultStatus, handleClearBooks, handleSignOut } = useSettingsActions();
 
   return (
     <View style={styles.container}>
@@ -98,6 +86,14 @@ export default function Settings() {
                 ReadLog is an offline-first reading companion app that helps you track your reading journey and build better reading habits.
               </Text>
             </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionContent}>
+            <Button variant="secondary" onPress={handleSignOut} icon={<LogOut size={18} color="#2563EB"/>}>
+              Sign Out
+            </Button>
           </View>
         </View>
       </ScrollView>

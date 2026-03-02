@@ -1,20 +1,34 @@
 import { Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import AppHeader from '../../components/shared/AppHeader';
 import BookCover from '../../components/shared/BookCover';
-import { discoverBooks } from '../../constants/mockData';
 import { showAlert } from '../../utils/alert';
+import OfflineBanner from '@/src/core/components/OfflineBanner';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
 
-function BookItem({ book }: { book: typeof discoverBooks[0] }) {
+function BookItem({ book, onAdd }: { book: any; onAdd: (book: any) => void }) {
+  const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
 
-  const handleAdd = () => {
-    setIsAdded(true);
-    showAlert(
-      'Added to Library',
-      "Book added as 'Want to Read'."
-    );
+  const handleAdd = async () => {
+    setIsAdding(true);
+    try {
+      await onAdd(book);
+      setIsAdded(true);
+      showAlert(
+        'Added to Library',
+        "Book added as 'Want to Read'."
+      );
+    } catch (error) {
+      showAlert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to add book'
+      );
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -23,6 +37,7 @@ function BookItem({ book }: { book: typeof discoverBooks[0] }) {
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+        {book.year && <Text style={styles.bookYear}>{book.year}</Text>}
         <View style={styles.genreBadge}>
           <Text style={styles.genreText}>{book.genre.toUpperCase()}</Text>
         </View>
@@ -30,60 +45,110 @@ function BookItem({ book }: { book: typeof discoverBooks[0] }) {
       <Pressable 
         style={[styles.addButton, isAdded && styles.addedButton]} 
         onPress={handleAdd}
-        disabled={isAdded}
+        disabled={isAdded || isAdding}
       >
-        <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-          {isAdded ? 'Added' : 'Add'}
-        </Text>
+        {isAdding ? (
+          <ActivityIndicator size="small" color={isAdded ? '#6B7280' : '#FFFFFF'} />
+        ) : (
+          <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
+            {isAdded ? 'Added' : 'Add'}
+          </Text>
+        )}
       </Pressable>
     </View>
   );
 }
 
 export default function Discover() {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const filteredBooks = discoverBooks.filter((book) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      book.title.toLowerCase().includes(query) ||
-      book.author.toLowerCase().includes(query)
-    );
-  });
+  const { user } = useAuth();
+  const {
+    isOffline,
+    searchQuery,
+    searchResults,
+    isSearching,
+    searchError,
+    hasSearched,
+    handleSearch,
+    handleAddBook,
+  } = useDiscoverBooks(user);
 
   return (
     <View style={styles.container}>
       <AppHeader title="Discover" variant="centered" showBackButton backIcon="chevron" />
+      <OfflineBanner />
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputWrapper}>
-          <Search size={20} color="#6B7280" strokeWidth={2} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by title or author..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#6B7280"
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')} style={styles.cancelButton}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-          )}
+      {isOffline ? (
+        <View style={styles.offlineContainer}>
+          <Text style={styles.offlineText}>
+            Discover requires an internet connection
+          </Text>
         </View>
-      </View>
+      ) : (
+        <>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchInputWrapper}>
+              <Search size={20} color="#6B7280" strokeWidth={2} style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by title or author..."
+                value={searchQuery}
+                onChangeText={handleSearch}
+                placeholderTextColor="#6B7280"
+                editable={!isSearching}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable 
+                  onPress={() => handleSearch('')} 
+                  style={styles.cancelButton}
+                  disabled={isSearching}
+                >
+                  <Text style={styles.cancelText}>Clear</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
 
-      <View style={styles.sectionLabelContainer}>
-        <Text style={styles.sectionLabel}>SEARCH RESULTS</Text>
-      </View>
+          {isSearching ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color="#2563EB" />
+              <Text style={styles.searchingText}>Searching books...</Text>
+            </View>
+          ) : hasSearched ? (
+            <>
+              <View style={styles.sectionLabelContainer}>
+                <Text style={styles.sectionLabel}>
+                  {searchError ? 'NO RESULTS' : `SEARCH RESULTS (${searchResults.length})`}
+                </Text>
+              </View>
 
-      <FlatList
-        data={filteredBooks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BookItem book={item} />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
+              {searchError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{searchError}</Text>
+                  <TouchableOpacity 
+                    onPress={() => handleSearch(searchQuery)} 
+                    style={styles.retryButton}
+                  >
+                    <Text style={styles.retryText}>Try Again</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <FlatList
+                  data={searchResults}
+                  keyExtractor={(item, index) => `${item.externalId || item.title}-${index}`}
+                  renderItem={({ item }) => <BookItem book={item} onAdd={handleAddBook} />}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                />
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Text style={styles.emptyStateText}>Start searching for books</Text>
+              <Text style={styles.emptyStateSubtext}>Type at least 2 characters to search</Text>
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 }
@@ -220,5 +285,74 @@ const styles = StyleSheet.create({
   },
   addedButtonText: {
     color: '#6B7280',
+  },
+  offlineContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  offlineText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  searchingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  bookYear: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
   },
 });

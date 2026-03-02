@@ -1,16 +1,11 @@
-import { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { BookMarked, WifiOff } from 'lucide-react-native';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useSplashRedirect } from '@/src/features/auth/hooks/useSplashRedirect';
 
 export default function Splash() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/(tabs)/home');
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const { user, loading } = useAuth();
+  useSplashRedirect(user, loading);
 
   return (
     <View style={styles.container}>

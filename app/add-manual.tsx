@@ -1,43 +1,30 @@
 import { router } from 'expo-router';
 import { Info, Save } from 'lucide-react-native';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import AppHeader from '../components/shared/AppHeader';
 import Button from '../components/shared/Button';
 import GenreSelector from '../components/shared/GenreSelector';
 import Input from '../components/shared/Input';
 import StatusSelector from '../components/shared/StatusSelector';
-import { showAlert } from '../utils/alert';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useAddManualBook } from '@/src/features/books/hooks/useAddManualBook';
 
 export default function AddManual() {
-  const [title, setTitle] = useState('');
-  const [author, setAuthor] = useState('');
-  const [totalPages, setTotalPages] = useState('');
-  const [status, setStatus] = useState('Reading');
-  const [genre, setGenre] = useState('Fiction');
-
-  const handleAddBook = () => {
-    if (!title.trim()) {
-      showAlert('Validation Error', 'Please enter a book title.');
-      return;
-    }
-    if (!author.trim()) {
-      showAlert('Validation Error', 'Please enter an author name.');
-      return;
-    }
-    if (!totalPages.trim()) {
-      showAlert('Validation Error', 'Please enter total pages.');
-      return;
-    }
-
-    const bookData = { title, author, totalPages, status, genre };
-    console.log('Book saved:', bookData);
-
-    router.push({
-      pathname: '/book-added-successfully',
-      params: { bookTitle: title },
-    });
-  };
+  const { user } = useAuth();
+  const {
+    title,
+    setTitle,
+    author,
+    setAuthor,
+    totalPages,
+    setTotalPages,
+    status,
+    setStatus,
+    genre,
+    setGenre,
+    isSaving,
+    handleAddBook,
+  } = useAddManualBook(user);
 
   return (
     <View style={styles.container}>
@@ -71,10 +58,15 @@ export default function AddManual() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button variant="primary" onPress={handleAddBook} icon={<Save size={18} color="#FFFFFF" strokeWidth={2} />}>
-          Save Book
+        <Button 
+          variant="primary" 
+          onPress={handleAddBook} 
+          icon={isSaving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Save size={18} color="#FFFFFF" strokeWidth={2} />}
+          disabled={isSaving}
+        >
+          {isSaving ? 'Saving...' : 'Save Book'}
         </Button>
-        <Button variant="cancel" onPress={() => router.back()}>
+        <Button variant="cancel" onPress={() => router.back()} disabled={isSaving}>
           Cancel
         </Button>
       </View>

@@ -1,5 +1,5 @@
 import { View, StyleSheet } from 'react-native';
-import { getGenreIcon } from '../../utils/genreIcons';
+import { getGenreIcon, getGenreConfig } from '../../utils/genreIcons';
 
 interface BookCoverProps {
   genre?: string;
@@ -8,6 +8,7 @@ interface BookCoverProps {
 
 export default function BookCover({ genre, size = 'medium' }: BookCoverProps) {
   const Icon = genre ? getGenreIcon(genre) : null;
+  const config = genre ? getGenreConfig(genre) : null;
   const dimensions = {
     small: { width: 80, height: 100, iconSize: 28 },
     medium: { width: 120, height: 160, iconSize: 48 },
@@ -15,8 +16,11 @@ export default function BookCover({ genre, size = 'medium' }: BookCoverProps) {
   }[size];
 
   return (
-    <View style={[styles.cover, { width: dimensions.width, height: dimensions.height }]}>
-      {Icon && <Icon size={dimensions.iconSize} color="#2563EB" strokeWidth={size === 'large' ? 1.5 : 2} />}
+    <View style={[
+      styles.cover, 
+      { width: dimensions.width, height: dimensions.height, backgroundColor: config?.bg || '#EFF6FF' }
+    ]}>
+      {Icon && <Icon size={dimensions.iconSize} color={config?.color || '#2563EB'} strokeWidth={size === 'large' ? 1.5 : 2} />}
     </View>
   );
 }
