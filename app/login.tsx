@@ -126,6 +126,7 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          passwordToggle
           error={passwordError}
         />
 
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     alignSelf: 'flex-end',
-    marginTop: -8,
+    marginTop: 0,
     marginBottom: 16,
   },
   forgotPasswordLinkDisabled: {

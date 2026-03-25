@@ -44,11 +44,12 @@ function getReadableAuthError(message: string): string {
 }
 
 function getReadableResetError(message: string): string {
+  if (message.includes('auth/user-not-found')) return 'If an account exists for this email, a reset link has been sent.';
   if (message.includes('auth/invalid-email')) return 'Please enter a valid email to reset your password.';
+  if (message.includes('auth/operation-not-allowed')) return 'Password reset is not enabled. Please contact support.';
   if (message.includes('auth/too-many-requests')) return 'Too many requests. Please wait and try again.';
   if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
-  // Keep reset flow generic to avoid account enumeration hints.
-  return 'If an account exists for this email, a reset link has been sent.';
+  return 'Failed to send reset email. Please try again.';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
