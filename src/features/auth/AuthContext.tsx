@@ -1,30 +1,36 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  type User,
-} from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '@/src/services/firebaseConfig';
+import {
+    createUserWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    type User,
+} from 'firebase/auth';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useState,
+    type ReactNode,
+} from 'react';
 
 type AuthContextType = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
 
 function getReadableAuthError(message: string): string {
   if (message.includes('auth/invalid-email')) return 'Invalid email format.';
@@ -35,6 +41,14 @@ function getReadableAuthError(message: string): string {
   if (message.includes('auth/weak-password')) return 'Password must be at least 6 characters.';
   if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
   return 'Authentication failed. Please try again.';
+}
+
+function getReadableResetError(message: string): string {
+  if (message.includes('auth/invalid-email')) return 'Please enter a valid email to reset your password.';
+  if (message.includes('auth/too-many-requests')) return 'Too many requests. Please wait and try again.';
+  if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
+  // Keep reset flow generic to avoid account enumeration hints.
+  return 'If an account exists for this email, a reset link has been sent.';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -65,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const currentAuth = ensureAuthReady();
     try {
-      await signInWithEmailAndPassword(currentAuth, email.trim(), password);
+      await signInWithEmailAndPassword(currentAuth, normalizeEmail(email), password);
     } catch (error) {
       throw new Error(getReadableAuthError(String(error)));
     }
@@ -74,9 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (email: string, password: string) => {
     const currentAuth = ensureAuthReady();
     try {
-      await createUserWithEmailAndPassword(currentAuth, email.trim(), password);
+      await createUserWithEmailAndPassword(currentAuth, normalizeEmail(email), password);
     } catch (error) {
       throw new Error(getReadableAuthError(String(error)));
+    }
+  }, [ensureAuthReady]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const currentAuth = ensureAuthReady();
+    try {
+      await sendPasswordResetEmail(currentAuth, normalizeEmail(email));
+    } catch (error) {
+      throw new Error(getReadableResetError(String(error)));
     }
   }, [ensureAuthReady]);
 
@@ -86,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [ensureAuthReady]);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut }),
-    [loading, signIn, signOut, signUp, user]
+    () => ({ user, loading, signIn, signUp, resetPassword, signOut }),
+    [loading, resetPassword, signIn, signOut, signUp, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

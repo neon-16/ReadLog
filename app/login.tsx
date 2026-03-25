@@ -1,20 +1,38 @@
-import { Link, router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { Link, router } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const RESET_COOLDOWN_MS = 30000;
+
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldownUntil]);
+
+  const remainingCooldownSeconds = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
 
   const emailError = useMemo(() => {
     if (!email) return '';
@@ -28,6 +46,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setError('');
+    setResetMessage('');
 
     if (!email || !password) {
       setError('Please fill in all fields.');
@@ -47,6 +66,38 @@ export default function LoginScreen() {
       setError(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError('');
+    setResetMessage('');
+
+    if (remainingCooldownSeconds > 0) {
+      setError(`Please wait ${remainingCooldownSeconds}s before requesting another reset email.`);
+      return;
+    }
+
+    if (!email) {
+      setError('Enter your email first, then tap Forgot Password.');
+      return;
+    }
+
+    if (emailError) {
+      setError('Please enter a valid email to reset your password.');
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      await resetPassword(email);
+      setResetMessage('If an account exists for this email, a reset link has been sent.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to send reset email.');
+    } finally {
+      setResettingPassword(false);
+      setCooldownUntil(Date.now() + RESET_COOLDOWN_MS);
+      setNow(Date.now());
     }
   };
 
@@ -78,7 +129,18 @@ export default function LoginScreen() {
           error={passwordError}
         />
 
+        <Pressable onPress={handleForgotPassword} disabled={resettingPassword || submitting || remainingCooldownSeconds > 0}>
+          <Text style={[styles.forgotPasswordLink, (resettingPassword || submitting || remainingCooldownSeconds > 0) && styles.forgotPasswordLinkDisabled]}>
+            {resettingPassword
+              ? 'Sending reset email...'
+              : remainingCooldownSeconds > 0
+                ? `Forgot Password? (${remainingCooldownSeconds}s)`
+                : 'Forgot Password?'}
+          </Text>
+        </Pressable>
+
         {!!error && <Text style={styles.formError}>{error}</Text>}
+        {!!resetMessage && <Text style={styles.successText}>{resetMessage}</Text>}
 
         <Button onPress={handleLogin} disabled={submitting}>
           {submitting ? 'Signing In...' : 'Sign In'}
@@ -128,6 +190,22 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     fontSize: 13,
     marginBottom: 12,
+  },
+  successText: {
+    color: '#047857',
+    fontSize: 13,
+    marginBottom: 12,
+  },
+  forgotPasswordLink: {
+    color: '#2563EB',
+    fontSize: 13,
+    fontWeight: '600',
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  forgotPasswordLinkDisabled: {
+    color: '#9CA3AF',
   },
   linkRow: {
     marginTop: 16,
