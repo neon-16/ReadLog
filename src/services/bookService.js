@@ -73,6 +73,15 @@ function mapBooksFromSnapshot(snapshot) {
   return (snapshot?.docs ?? []).map((snapshotDoc) => Book.fromFirestore(snapshotDoc));
 }
 
+function isMissingIndexError(error) {
+  const message = String(error || '');
+  return (
+    message.includes('FAILED_PRECONDITION') ||
+    message.includes('failed-precondition') ||
+    message.includes('requires an index')
+  );
+}
+
 export async function getBooksPage({
   pageSize = 15,
   lastVisible = null,
@@ -152,6 +161,13 @@ export async function getBooksByStatus(status) {
 
     return mapBooksFromSnapshot(snapshot).sort(sortByCreatedAtDesc);
   } catch (error) {
+    if (isMissingIndexError(error)) {
+      // Fallback keeps app usable without requiring immediate composite-index setup.
+      const booksRef = getUserBooksRef();
+      const fallbackSnapshot = await getDocs(query(booksRef, where('status', '==', status)));
+      return mapBooksFromSnapshot(fallbackSnapshot).sort(sortByCreatedAtDesc);
+    }
+
     throw new Error(`Failed to fetch books by status: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -182,6 +198,30 @@ export async function getBooksByStatusPage(status, {
       hasMore: snapshot.docs.length === safePageSize,
     };
   } catch (error) {
+    if (isMissingIndexError(error)) {
+      const booksRef = getUserBooksRef();
+      const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 10));
+
+      // Cursor pagination depends on the ordered query index; degrade gracefully for first page.
+      if (lastVisible) {
+        return {
+          books: [],
+          lastVisible: null,
+          hasMore: false,
+        };
+      }
+
+      const fallbackQuery = query(booksRef, where('status', '==', status), limit(safePageSize));
+      const fallbackSnapshot = await getDocs(fallbackQuery);
+      const fallbackBooks = mapBooksFromSnapshot(fallbackSnapshot).sort(sortByCreatedAtDesc);
+
+      return {
+        books: fallbackBooks,
+        lastVisible: fallbackSnapshot.docs[fallbackSnapshot.docs.length - 1] || null,
+        hasMore: fallbackSnapshot.docs.length === safePageSize,
+      };
+    }
+
     throw new Error(`Failed to fetch books by status page: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

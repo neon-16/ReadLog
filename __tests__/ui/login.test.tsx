@@ -2,13 +2,16 @@ import LoginScreen from '@/app/login';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
-import { Text } from 'react-native';
 
 const mockReplace = jest.fn();
 const mockSignIn = jest.fn();
 const mockResetPassword = jest.fn();
 
 jest.mock('expo-router', () => {
+  // Jest requires mock factory variables to be created inside this scope.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const MockText = require('react-native').Text;
+
   return {
     router: {
       replace: mockReplace,
@@ -16,7 +19,7 @@ jest.mock('expo-router', () => {
       back: jest.fn(),
     },
     Link: ({ children }: { children: React.ReactNode }) => (
-      <Text>{children}</Text>
+      <MockText>{children}</MockText>
     ),
   };
 });
