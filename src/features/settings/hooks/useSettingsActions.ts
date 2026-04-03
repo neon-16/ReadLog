@@ -1,8 +1,8 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { showAlert } from '@/utils/alert';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { clearAllBooks } from '@/src/services/bookService';
+import { showAlert } from '@/utils/alert';
+import { router } from 'expo-router';
+import { useState } from 'react';
 
 export function useSettingsActions() {
   const [defaultStatus, setDefaultStatus] = useState('Reading');

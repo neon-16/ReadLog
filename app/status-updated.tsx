@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function StatusUpdated() {
   const { bookTitle = 'Your Book', newStatus = 'updated' } = useLocalSearchParams<{ 
@@ -44,7 +44,7 @@ export default function StatusUpdated() {
       <View style={styles.buttonContainer}>
         <Pressable
           style={styles.primaryButton}
-          onPress={() => router.push('/(tabs)/home')}
+          onPress={() => router.dismissTo('/(tabs)/home')}
         >
           <Text style={styles.primaryButtonText}>Go to Home</Text>
         </Pressable>

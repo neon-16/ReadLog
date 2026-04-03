@@ -27,7 +27,7 @@ export default function BookAddedSuccessfully() {
       <View style={styles.buttonContainer}>
         <Pressable
           style={styles.primaryButton}
-          onPress={() => router.push('/(tabs)/home')}
+          onPress={() => router.dismissTo('/(tabs)/home')}
         >
           <Text style={styles.primaryButtonText}>Go to Home</Text>
         </Pressable>

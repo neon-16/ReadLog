@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function BookDeletedSuccessfully() {
   return (
@@ -24,7 +24,7 @@ export default function BookDeletedSuccessfully() {
       <View style={styles.buttonContainer}>
         <Pressable
           style={styles.primaryButton}
-          onPress={() => router.push('/(tabs)/home')}
+          onPress={() => router.dismissTo('/(tabs)/home')}
         >
           <Text style={styles.primaryButtonText}>Go to Home</Text>
         </Pressable>

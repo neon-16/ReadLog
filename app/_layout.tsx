@@ -1,6 +1,7 @@
-import { Stack } from 'expo-router';
 import { AuthProvider } from '@/src/features/auth/AuthContext';
 import { useAuthGateRedirect } from '@/src/features/auth/hooks/useAuthGateRedirect';
+import { Stack } from 'expo-router';
+import { Platform } from 'react-native';
 
 function AuthGate() {
   useAuthGateRedirect();
@@ -11,7 +12,13 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AuthGate />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          gestureEnabled: Platform.OS === 'ios',
+          fullScreenGestureEnabled: Platform.OS === 'ios',
+        }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="splash" />
         <Stack.Screen name="login" />
