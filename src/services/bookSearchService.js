@@ -43,19 +43,28 @@ function mapGenre(subjects = []) {
   return 'other';
 }
 
+function createCoverUrl(coverId, size = 'S') {
+  if (!coverId) {
+    return null;
+  }
+  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+}
+
 /**
  * Search books from Open Library API
  * @param {string} query - Search query (title or author)
  * @returns {Promise<Array>} Array of book objects
  */
-export async function searchOnlineBooks(query) {
+export async function searchOnlineBooks(query, { page = 1, pageSize = 15 } = {}) {
   if (!query || query.trim().length === 0) {
-    return [];
+    return { books: [], page: 1, hasMore: false };
   }
 
   try {
     const encodedQuery = encodeURIComponent(query.trim());
-    const url = `${OPEN_LIBRARY_API}?q=${encodedQuery}&limit=20&fields=key,title,author_name,first_publish_year,cover_i,subject,isbn,number_of_pages_median`;
+    const safePage = Math.max(1, Number(page) || 1);
+    const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 15));
+    const url = `${OPEN_LIBRARY_API}?q=${encodedQuery}&page=${safePage}&limit=${safePageSize}&fields=key,title,author_name,first_publish_year,cover_i,subject,isbn,number_of_pages_median`;
 
     const response = await fetch(url, {
       timeout: 10000,
@@ -68,12 +77,11 @@ export async function searchOnlineBooks(query) {
     const data = await response.json();
 
     if (!data.docs || data.docs.length === 0) {
-      return [];
+      return { books: [], page: safePage, hasMore: false };
     }
 
-    return data.docs
+    const books = data.docs
       .filter((doc) => doc.title && doc.author_name) // Only return books with title and author
-      .slice(0, 20)
       .map((doc) => ({
         title: doc.title || 'Unknown',
         author: doc.author_name?.[0] || 'Unknown Author',
@@ -82,9 +90,16 @@ export async function searchOnlineBooks(query) {
         externalId: doc.key, // Open Library key for reference
         year: doc.first_publish_year,
         coverId: doc.cover_i,
+        coverUrl: createCoverUrl(doc.cover_i, 'S'),
         isbn: doc.isbn?.[0],
         totalPages: doc.number_of_pages_median || 300, // Default to 300 if not available
       }));
+
+    return {
+      books,
+      page: safePage,
+      hasMore: books.length === safePageSize,
+    };
   } catch (error) {
     console.error('Book search error:', error);
     throw new Error(

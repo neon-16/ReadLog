@@ -1,12 +1,14 @@
-import { View, StyleSheet } from 'react-native';
-import { getGenreIcon, getGenreConfig } from '../../utils/genreIcons';
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
+import { getGenreConfig, getGenreIcon } from '../../utils/genreIcons';
 
 interface BookCoverProps {
   genre?: string;
   size?: 'small' | 'medium' | 'large';
+  imageUrl?: string | null;
 }
 
-export default function BookCover({ genre, size = 'medium' }: BookCoverProps) {
+export default function BookCover({ genre, size = 'medium', imageUrl = null }: BookCoverProps) {
   const Icon = genre ? getGenreIcon(genre) : null;
   const config = genre ? getGenreConfig(genre) : null;
   const dimensions = {
@@ -20,7 +22,18 @@ export default function BookCover({ genre, size = 'medium' }: BookCoverProps) {
       styles.cover, 
       { width: dimensions.width, height: dimensions.height, backgroundColor: config?.bg || '#EFF6FF' }
     ]}>
-      {Icon && <Icon size={dimensions.iconSize} color={config?.color || '#2563EB'} strokeWidth={size === 'large' ? 1.5 : 2} />}
+      {imageUrl ? (
+        // Expo Image provides memory/disk cache and downscales decode by view size.
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.coverImage}
+          contentFit="cover"
+          transition={120}
+          cachePolicy="memory-disk"
+        />
+      ) : (
+        Icon && <Icon size={dimensions.iconSize} color={config?.color || '#2563EB'} strokeWidth={size === 'large' ? 1.5 : 2} />
+      )}
     </View>
   );
 }
@@ -36,5 +49,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
   },
 });

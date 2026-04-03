@@ -1,10 +1,10 @@
+import { loginUser } from '@/src/features/auth/utils/loginUser';
 import { auth, isFirebaseConfigured } from '@/src/services/firebaseConfig';
 import {
     createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
     onAuthStateChanged,
     sendPasswordResetEmail,
-    signInWithEmailAndPassword,
     type User,
 } from 'firebase/auth';
 import {
@@ -79,11 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const currentAuth = ensureAuthReady();
-    try {
-      await signInWithEmailAndPassword(currentAuth, normalizeEmail(email), password);
-    } catch (error) {
-      throw new Error(getReadableAuthError(String(error)));
-    }
+    await loginUser(currentAuth, email, password);
   }, [ensureAuthReady]);
 
   const signUp = useCallback(async (email: string, password: string) => {

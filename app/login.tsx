@@ -118,6 +118,7 @@ export default function LoginScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           error={emailError}
+          testID="login-email-input"
         />
 
         <Input
@@ -128,6 +129,7 @@ export default function LoginScreen() {
           secureTextEntry
           passwordToggle
           error={passwordError}
+          testID="login-password-input"
         />
 
         <Pressable onPress={handleForgotPassword} disabled={resettingPassword || submitting || remainingCooldownSeconds > 0}>
@@ -140,10 +142,10 @@ export default function LoginScreen() {
           </Text>
         </Pressable>
 
-        {!!error && <Text style={styles.formError}>{error}</Text>}
+        {!!error && <Text testID="login-form-error" style={styles.formError}>{error}</Text>}
         {!!resetMessage && <Text style={styles.successText}>{resetMessage}</Text>}
 
-        <Button onPress={handleLogin} disabled={submitting}>
+        <Button testID="login-submit-button" onPress={handleLogin} disabled={submitting}>
           {submitting ? 'Signing In...' : 'Sign In'}
         </Button>
 

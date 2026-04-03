@@ -1,18 +1,31 @@
-import { Search } from 'lucide-react-native';
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ActivityIndicator, TouchableOpacity } from 'react-native';
-import AppHeader from '../../components/shared/AppHeader';
-import BookCover from '../../components/shared/BookCover';
-import { showAlert } from '../../utils/alert';
 import OfflineBanner from '@/src/core/components/OfflineBanner';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
+import { Search } from 'lucide-react-native';
+import { memo, useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AppHeader from '../../components/shared/AppHeader';
+import BookCover from '../../components/shared/BookCover';
+import { showAlert } from '../../utils/alert';
 
-function BookItem({ book, onAdd }: { book: any; onAdd: (book: any) => void }) {
+type DiscoverBook = {
+  title: string;
+  author: string;
+  genre: string;
+  source: string;
+  externalId?: string;
+  year?: number;
+  coverUrl?: string | null;
+  totalPages?: number;
+};
+
+const ROW_HEIGHT = 126;
+
+const BookItem = memo(function BookItem({ book, onAdd }: { book: DiscoverBook; onAdd: (book: DiscoverBook) => Promise<void> }) {
   const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
 
-  const handleAdd = async () => {
+  const handleAdd = useCallback(async () => {
     setIsAdding(true);
     try {
       await onAdd(book);
@@ -29,17 +42,17 @@ function BookItem({ book, onAdd }: { book: any; onAdd: (book: any) => void }) {
     } finally {
       setIsAdding(false);
     }
-  };
+  }, [book, onAdd]);
 
   return (
     <View style={styles.bookItem}>
-      <BookCover genre={book.genre} size="small" />
+      <BookCover genre={book.genre} size="small" imageUrl={book.coverUrl} />
       <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+        <Text style={styles.bookTitle} numberOfLines={1}>{book.title ?? 'Untitled'}</Text>
+        <Text style={styles.bookAuthor} numberOfLines={1}>{book.author ?? 'Unknown Author'}</Text>
         {book.year && <Text style={styles.bookYear}>{book.year}</Text>}
         <View style={styles.genreBadge}>
-          <Text style={styles.genreText}>{book.genre.toUpperCase()}</Text>
+          <Text style={styles.genreText}>{book.genre?.toUpperCase?.() ?? 'OTHER'}</Text>
         </View>
       </View>
       <Pressable 
@@ -57,7 +70,7 @@ function BookItem({ book, onAdd }: { book: any; onAdd: (book: any) => void }) {
       </Pressable>
     </View>
   );
-}
+});
 
 export default function Discover() {
   const { user } = useAuth();
@@ -68,9 +81,30 @@ export default function Discover() {
     isSearching,
     searchError,
     hasSearched,
+    hasMore,
     handleSearch,
+    loadNextPage,
     handleAddBook,
   } = useDiscoverBooks(user);
+
+  const keyExtractor = useCallback(
+    (item: DiscoverBook, index: number) => `${item.externalId ?? item.title ?? 'book'}-${index}`,
+    []
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: DiscoverBook }) => <BookItem book={item} onAdd={handleAddBook} />,
+    [handleAddBook]
+  );
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<DiscoverBook> | null | undefined, index: number) => ({
+      length: ROW_HEIGHT,
+      offset: ROW_HEIGHT * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <View style={styles.container}>
@@ -134,10 +168,22 @@ export default function Discover() {
               ) : (
                 <FlatList
                   data={searchResults}
-                  keyExtractor={(item, index) => `${item.externalId || item.title}-${index}`}
-                  renderItem={({ item }) => <BookItem book={item} onAdd={handleAddBook} />}
+                  keyExtractor={keyExtractor}
+                  renderItem={renderItem}
+                  onEndReachedThreshold={0.5}
+                  onEndReached={loadNextPage}
+                  initialNumToRender={8}
+                  maxToRenderPerBatch={8}
+                  windowSize={7}
+                  removeClippedSubviews
+                  getItemLayout={getItemLayout}
                   contentContainerStyle={styles.listContent}
                   showsVerticalScrollIndicator={false}
+                  ListFooterComponent={
+                    isSearching && hasMore
+                      ? <ActivityIndicator size="small" color="#2563EB" style={styles.paginationLoader} />
+                      : null
+                  }
                 />
               )}
             </>
@@ -157,6 +203,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
+  },
+  paginationLoader: {
+    marginTop: 8,
+    marginBottom: 12,
   },
   searchContainer: {
     paddingHorizontal: 20,

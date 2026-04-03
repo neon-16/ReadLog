@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { getBooksByStatusPage } from '@/src/services/bookService';
+import { getUserProfile, type UserProfile } from '@/src/services/userService';
 import { useFocusEffect } from 'expo-router';
 import type { User } from 'firebase/auth';
-import { getUserProfile, type UserProfile } from '@/src/services/userService';
-import { getAllBooks, splitBooksByStatus } from '@/src/services/bookService';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+const HOME_PAGE_SIZE = 10;
 
 export function useHomeData(user: User | null) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -13,22 +15,33 @@ export function useHomeData(user: User | null) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedBooksRef = useRef(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadProfile = async () => {
       if (!user) return;
       try {
         const userProfile = await getUserProfile(user.uid);
-        setProfile(userProfile);
+        if (isMounted) {
+          setProfile(userProfile);
+        }
       } catch (loadError) {
         console.error('Error loading profile:', loadError);
       }
     };
 
     loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const fetchBooks = useCallback(async (showFullLoader = false) => {
+    const requestId = ++requestIdRef.current;
+
     try {
       if (showFullLoader) {
         setLoading(true);
@@ -37,20 +50,32 @@ export function useHomeData(user: User | null) {
       }
       setError(null);
 
-      const books = await getAllBooks();
-      const { reading, wantToRead, finished } = splitBooksByStatus(books);
+      // Load each section in parallel with capped page size to reduce cost and improve first paint.
+      const [readingPage, wantToReadPage, finishedPage] = await Promise.all([
+        getBooksByStatusPage('reading', { pageSize: HOME_PAGE_SIZE }),
+        getBooksByStatusPage('want_to_read', { pageSize: HOME_PAGE_SIZE }),
+        getBooksByStatusPage('finished', { pageSize: HOME_PAGE_SIZE }),
+      ]);
 
-      setReadingBooks(reading);
-      setWantToReadBooks(wantToRead);
-      setFinishedBooks(finished);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setReadingBooks(readingPage.books);
+      setWantToReadBooks(wantToReadPage.books);
+      setFinishedBooks(finishedPage.books);
       hasLoadedBooksRef.current = true;
     } catch (fetchError) {
       console.error('Book fetch error:', fetchError);
       const errorMsg = fetchError instanceof Error ? fetchError.message : JSON.stringify(fetchError);
-      setError(errorMsg);
+      if (requestId === requestIdRef.current) {
+        setError(errorMsg);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -59,6 +84,10 @@ export function useHomeData(user: User | null) {
       if (user) {
         fetchBooks(!hasLoadedBooksRef.current);
       }
+
+      return () => {
+        requestIdRef.current += 1;
+      };
     }, [fetchBooks, user])
   );
 

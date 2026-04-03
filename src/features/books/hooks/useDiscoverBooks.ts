@@ -1,27 +1,63 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { User } from 'firebase/auth';
-import { showAlert } from '@/utils/alert';
 import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
-import { addBook } from '@/src/services/bookService';
 import { searchOnlineBooks } from '@/src/services/bookSearchService';
+import { addBook } from '@/src/services/bookService';
+import { showAlert } from '@/utils/alert';
+import type { User } from 'firebase/auth';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const DEBOUNCE_DELAY = 500;
 const MIN_SEARCH_LENGTH = 2;
+const SEARCH_PAGE_SIZE = 15;
+const CACHE_TTL_MS = 60 * 1000;
+
+type SearchResultItem = {
+  title: string;
+  author: string;
+  genre: string;
+  source: string;
+  externalId?: string;
+  year?: number;
+  coverId?: number;
+  coverUrl?: string | null;
+  isbn?: string;
+  totalPages?: number;
+};
+
+type CacheEntry = {
+  items: SearchResultItem[];
+  hasMore: boolean;
+  timestamp: number;
+};
 
 export function useDiscoverBooks(user: User | null) {
   const { isOffline } = useNetworkStatus();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
+  const activeRequestIdRef = useRef(0);
 
-  const performSearch = useCallback(async (query: string) => {
-    if (query.trim().length < MIN_SEARCH_LENGTH) {
+  const isCacheValid = useCallback((entry: CacheEntry | undefined) => {
+    if (!entry) {
+      return false;
+    }
+    return Date.now() - entry.timestamp < CACHE_TTL_MS;
+  }, []);
+
+  const performSearch = useCallback(async (query: string, page = 1) => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (normalizedQuery.length < MIN_SEARCH_LENGTH) {
       setSearchResults([]);
       setSearchError(null);
       setHasSearched(false);
+      setHasMore(false);
+      setCurrentPage(1);
       return;
     }
 
@@ -30,24 +66,61 @@ export function useDiscoverBooks(user: User | null) {
       return;
     }
 
+    const cacheKey = `${normalizedQuery}:${page}`;
+    const cached = cacheRef.current.get(cacheKey);
+    if (isCacheValid(cached)) {
+      setHasSearched(true);
+      setSearchError(null);
+      setCurrentPage(page);
+      setHasMore(!!cached?.hasMore);
+      setSearchResults((prev) => (page === 1 ? (cached?.items || []) : [...prev, ...(cached?.items || [])]));
+      return;
+    }
+
+    const requestId = ++activeRequestIdRef.current;
+
     setIsSearching(true);
     setSearchError(null);
     setHasSearched(true);
 
     try {
-      const results = await searchOnlineBooks(query);
-      setSearchResults(results);
-      if (results.length === 0) {
+      const { books, hasMore: hasNextPage } = await searchOnlineBooks(normalizedQuery, {
+        page,
+        pageSize: SEARCH_PAGE_SIZE,
+      });
+
+      if (requestId !== activeRequestIdRef.current) {
+        return;
+      }
+
+      cacheRef.current.set(cacheKey, {
+        items: books,
+        hasMore: hasNextPage,
+        timestamp: Date.now(),
+      });
+
+      setSearchResults((prev) => (page === 1 ? books : [...prev, ...books]));
+      setCurrentPage(page);
+      setHasMore(hasNextPage);
+
+      if (page === 1 && books.length === 0) {
         setSearchError('No books found. Try a different search.');
       }
     } catch (error) {
+      if (requestId !== activeRequestIdRef.current) {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Search failed';
       setSearchError(message);
-      setSearchResults([]);
+      if (page === 1) {
+        setSearchResults([]);
+      }
     } finally {
-      setIsSearching(false);
+      if (requestId === activeRequestIdRef.current) {
+        setIsSearching(false);
+      }
     }
-  }, [isOffline]);
+  }, [isCacheValid, isOffline]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -60,6 +133,8 @@ export function useDiscoverBooks(user: User | null) {
       setSearchResults([]);
       setSearchError(null);
       setHasSearched(false);
+      setHasMore(false);
+      setCurrentPage(1);
       return;
     }
 
@@ -67,33 +142,45 @@ export function useDiscoverBooks(user: User | null) {
       setSearchResults([]);
       setSearchError(null);
       setHasSearched(false);
+      setHasMore(false);
+      setCurrentPage(1);
       return;
     }
 
+    setCurrentPage(1);
     debounceTimerRef.current = setTimeout(() => {
-      performSearch(query);
+      performSearch(query, 1);
     }, DEBOUNCE_DELAY);
   }, [performSearch]);
 
+  const loadNextPage = useCallback(async () => {
+    if (isSearching || !hasMore || searchQuery.trim().length < MIN_SEARCH_LENGTH) {
+      return;
+    }
+
+    await performSearch(searchQuery, currentPage + 1);
+  }, [currentPage, hasMore, isSearching, performSearch, searchQuery]);
+
   useEffect(() => {
     return () => {
+      activeRequestIdRef.current += 1;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
   }, []);
 
-  const handleAddBook = useCallback(async (book: any) => {
+  const handleAddBook = useCallback(async (book: SearchResultItem) => {
     if (!user) {
       showAlert('Error', 'You must be logged in to add books');
       return;
     }
 
     await addBook({
-      title: book.title,
-      author: book.author,
-      totalPages: book.totalPages || 300,
-      genre: book.genre,
+      title: book?.title?.trim?.() || 'Untitled',
+      author: book?.author?.trim?.() || 'Unknown Author',
+      totalPages: book?.totalPages || 300,
+      genre: book?.genre || 'other',
       source: 'online',
     });
   }, [user]);
@@ -105,7 +192,9 @@ export function useDiscoverBooks(user: User | null) {
     isSearching,
     searchError,
     hasSearched,
+    hasMore,
     handleSearch,
+    loadNextPage,
     handleAddBook,
   };
 }

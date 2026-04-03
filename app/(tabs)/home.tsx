@@ -1,18 +1,25 @@
-import { View, Text, StyleSheet, Pressable, FlatList, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
-import { Plus } from 'lucide-react-native';
-import AppHeader from '../../components/shared/AppHeader';
-import ProgressBar from '../../components/shared/ProgressBar';
-import BookCover from '../../components/shared/BookCover';
+import OfflineBanner from '@/src/core/components/OfflineBanner';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useHomeData } from '@/src/features/books/hooks/useHomeData';
-import OfflineBanner from '@/src/core/components/OfflineBanner';
+import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
+import { memo, useCallback } from 'react';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AppHeader from '../../components/shared/AppHeader';
+import BookCover from '../../components/shared/BookCover';
+import ProgressBar from '../../components/shared/ProgressBar';
 
-function BookCard({ book, isFinished }: { book: any; isFinished?: boolean }) {
+const BOOK_ROW_HEIGHT = 144;
+
+const BookCard = memo(function BookCard({ book, isFinished }: { book: any; isFinished?: boolean }) {
+  const handlePress = useCallback(() => {
+    router.push({ pathname: '/book-detail', params: { bookId: book.id } });
+  }, [book.id]);
+
   return (
     <Pressable
       style={[styles.bookCard, isFinished && styles.finishedCard]}
-      onPress={() => router.push({pathname: '/book-detail', params: {bookId: book.id}})}
+      onPress={handlePress}
     >
       <BookCover genre={book.genre} size="small" />
       <View style={styles.bookInfo}>
@@ -25,7 +32,7 @@ function BookCard({ book, isFinished }: { book: any; isFinished?: boolean }) {
       </View>
     </Pressable>
   );
-}
+});
 
 export default function Home() {
   const { user } = useAuth();
@@ -39,6 +46,19 @@ export default function Home() {
     error,
     fetchBooks,
   } = useHomeData(user);
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
+  const renderReadingItem = useCallback(({ item }: { item: any }) => <BookCard book={item} />, []);
+  const renderWantToReadItem = useCallback(({ item }: { item: any }) => <BookCard book={item} />, []);
+  const renderFinishedItem = useCallback(({ item }: { item: any }) => <BookCard book={item} isFinished />, []);
+  const getItemLayout = useCallback(
+    (_: ArrayLike<any> | null | undefined, index: number) => ({
+      length: BOOK_ROW_HEIGHT,
+      offset: BOOK_ROW_HEIGHT * index,
+      index,
+    }),
+    []
+  );
 
   return (
     <View style={styles.container}>
@@ -99,9 +119,14 @@ export default function Home() {
             ) : (
               <FlatList
                 data={readingBooks}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <BookCard book={item} />}
+                keyExtractor={keyExtractor}
+                renderItem={renderReadingItem}
                 scrollEnabled={false}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews
+                getItemLayout={getItemLayout}
               />
             )}
           </View>
@@ -118,9 +143,14 @@ export default function Home() {
             ) : (
               <FlatList
                 data={wantToReadBooks}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <BookCard book={item} />}
+                keyExtractor={keyExtractor}
+                renderItem={renderWantToReadItem}
                 scrollEnabled={false}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews
+                getItemLayout={getItemLayout}
               />
             )}
           </View>
@@ -137,9 +167,14 @@ export default function Home() {
             ) : (
               <FlatList
                 data={finishedBooks}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => <BookCard book={item} isFinished />}
+                keyExtractor={keyExtractor}
+                renderItem={renderFinishedItem}
                 scrollEnabled={false}
+                initialNumToRender={5}
+                maxToRenderPerBatch={5}
+                windowSize={5}
+                removeClippedSubviews
+                getItemLayout={getItemLayout}
               />
             )}
           </View>

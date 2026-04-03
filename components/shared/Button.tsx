@@ -1,5 +1,5 @@
-import { Pressable, Text, StyleSheet } from 'react-native';
 import { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 interface ButtonProps {
   onPress: () => void;
@@ -7,9 +7,17 @@ interface ButtonProps {
   icon?: ReactNode;
   children: string;
   disabled?: boolean;
+  testID?: string;
 }
 
-export default function Button({ onPress, variant = 'primary', icon, children, disabled = false }: ButtonProps) {
+export default function Button({
+  onPress,
+  variant = 'primary',
+  icon,
+  children,
+  disabled = false,
+  testID,
+}: ButtonProps) {
   return (
     <Pressable 
       style={[
@@ -22,6 +30,7 @@ export default function Button({ onPress, variant = 'primary', icon, children, d
       ]} 
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
     >
       {icon}
       <Text style={[

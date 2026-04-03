@@ -1,23 +1,35 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-  writeBatch,
-} from 'firebase/firestore';
 import Book from '@/src/models/Book';
 import { auth, db } from '@/src/services/firebaseConfig';
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getCountFromServer,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    serverTimestamp,
+    startAfter,
+    updateDoc,
+    where,
+    writeBatch,
+} from 'firebase/firestore';
 
 const getUserBooksRef = () => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
   return collection(db, 'users', userId, 'books');
+};
+
+const getAuthenticatedUserId = () => {
+  const userId = auth.currentUser?.uid;
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+  return userId;
 };
 
 const withTimeout = async (promise, timeoutMs = 10000, timeoutMessage = 'Request timed out') => {
@@ -44,24 +56,65 @@ const getBookDocumentById = async (bookId) => {
   }
 
   const booksRef = getUserBooksRef();
-  const byIdField = await getDocs(query(booksRef, where('id', '==', bookId)));
+  const byIdField = await getDocs(query(booksRef, where('id', '==', bookId), limit(1)));
 
   if (!byIdField.empty) {
     return byIdField.docs[0];
   }
 
-  const allSnapshot = await getDocs(booksRef);
-  return allSnapshot.docs.find((snapshotDoc) => snapshotDoc.id === bookId) || null;
+  return null;
 };
+
+function sortByCreatedAtDesc(a, b) {
+  return (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0);
+}
+
+function mapBooksFromSnapshot(snapshot) {
+  return (snapshot?.docs ?? []).map((snapshotDoc) => Book.fromFirestore(snapshotDoc));
+}
+
+export async function getBooksPage({
+  pageSize = 15,
+  lastVisible = null,
+} = {}) {
+  try {
+    const booksRef = getUserBooksRef();
+    const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 15));
+
+    const constraints = [orderBy('createdAt', 'desc')];
+    if (lastVisible) {
+      constraints.push(startAfter(lastVisible));
+    }
+    constraints.push(limit(safePageSize));
+
+    const snapshot = await getDocs(query(booksRef, ...constraints));
+    const books = mapBooksFromSnapshot(snapshot);
+
+    return {
+      books,
+      lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
+      hasMore: snapshot.docs.length === safePageSize,
+    };
+  } catch (error) {
+    throw new Error(`Failed to fetch books page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
 export async function getAllBooks() {
   try {
-    const booksRef = getUserBooksRef();
-    const snapshot = await getDocs(booksRef);
+    const allBooks = [];
+    let cursor = null;
+    let hasMore = true;
 
-    return snapshot.docs
-      .map((snapshotDoc) => Book.fromFirestore(snapshotDoc))
-      .sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
+    // Read in pages to avoid large one-shot reads blocking UI on large libraries.
+    while (hasMore) {
+      const page = await getBooksPage({ pageSize: 20, lastVisible: cursor });
+      allBooks.push(...page.books);
+      cursor = page.lastVisible;
+      hasMore = page.hasMore && !!cursor;
+    }
+
+    return allBooks.sort(sortByCreatedAtDesc);
   } catch (error) {
     throw new Error(`Failed to fetch books: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -94,24 +147,66 @@ export function splitBooksByStatus(books = []) {
 export async function getBooksByStatus(status) {
   try {
     const booksRef = getUserBooksRef();
-    const booksQuery = query(booksRef, where('status', '==', status));
+    const booksQuery = query(booksRef, where('status', '==', status), orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(booksQuery);
 
-    return snapshot.docs
-      .map((snapshotDoc) => Book.fromFirestore(snapshotDoc))
-      .sort((a, b) => (b.createdAt?.getTime?.() || 0) - (a.createdAt?.getTime?.() || 0));
+    return mapBooksFromSnapshot(snapshot).sort(sortByCreatedAtDesc);
   } catch (error) {
     throw new Error(`Failed to fetch books by status: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
+export async function getBooksByStatusPage(status, {
+  pageSize = 10,
+  lastVisible = null,
+} = {}) {
+  try {
+    const booksRef = getUserBooksRef();
+    const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 10));
+
+    const constraints = [where('status', '==', status), orderBy('createdAt', 'desc')];
+
+    if (lastVisible) {
+      constraints.push(startAfter(lastVisible));
+    }
+
+    constraints.push(limit(safePageSize));
+
+    const booksQuery = query(booksRef, ...constraints);
+    const snapshot = await getDocs(booksQuery);
+    const books = mapBooksFromSnapshot(snapshot);
+
+    return {
+      books,
+      lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
+      hasMore: snapshot.docs.length === safePageSize,
+    };
+  } catch (error) {
+    throw new Error(`Failed to fetch books by status page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 export async function getBookStats() {
   try {
-    const books = await getAllBooks();
+    const booksRef = getUserBooksRef();
 
-    const reading = books.filter((book) => book.status === 'reading').length;
-    const wantToRead = books.filter((book) => book.status === 'want_to_read').length;
-    const finished = books.filter((book) => book.status === 'finished').length;
+    // Use server-side count queries to avoid downloading every document for stats.
+    const [
+      totalSnapshot,
+      readingSnapshot,
+      wantToReadSnapshot,
+      finishedSnapshot,
+    ] = await Promise.all([
+      getCountFromServer(booksRef),
+      getCountFromServer(query(booksRef, where('status', '==', 'reading'))),
+      getCountFromServer(query(booksRef, where('status', '==', 'want_to_read'))),
+      getCountFromServer(query(booksRef, where('status', '==', 'finished'))),
+    ]);
+
+    const total = totalSnapshot.data().count;
+    const reading = readingSnapshot.data().count;
+    const wantToRead = wantToReadSnapshot.data().count;
+    const finished = finishedSnapshot.data().count;
 
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');
@@ -128,7 +223,7 @@ export async function getBookStats() {
     const goalProgress = readingGoal > 0 ? Math.round((finished / readingGoal) * 100) : 0;
 
     return {
-      total: books.length,
+      total,
       reading,
       wantToRead,
       finished,
@@ -176,6 +271,8 @@ export async function addBook({ title, author, totalPages, genre, source }) {
 
 export async function updateBookProgress(bookId, { currentPage, totalPages }) {
   try {
+    const userId = getAuthenticatedUserId();
+
     return await withTimeout(
       (async () => {
         const snapshotDoc = await getBookDocumentById(bookId);
@@ -203,7 +300,7 @@ export async function updateBookProgress(bookId, { currentPage, totalPages }) {
                 : 'want_to_read')
           : (safeCurrentPage > 0 ? 'reading' : 'want_to_read');
 
-        await updateDoc(doc(db, 'users', auth.currentUser.uid, 'books', snapshotDoc.id), {
+        await updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
           currentPage: safeCurrentPage,
           totalPages: safeTotalPages,
           progress: nextProgress,
@@ -229,6 +326,7 @@ export async function updateBookProgress(bookId, { currentPage, totalPages }) {
 
 export async function updateBookStatus(bookId, newStatus) {
   try {
+    const userId = getAuthenticatedUserId();
     const snapshotDoc = await getBookDocumentById(bookId);
     if (!snapshotDoc) {
       throw new Error('Book not found');
@@ -242,7 +340,7 @@ export async function updateBookStatus(bookId, newStatus) {
       createdAt: book.createdAt,
     });
 
-    await updateDoc(doc(db, 'users', auth.currentUser.uid, 'books', snapshotDoc.id), {
+    await updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
       status: updatedBook.status,
       currentPage: updatedBook.currentPage,
       progress: updatedBook.progress,
@@ -256,12 +354,13 @@ export async function updateBookStatus(bookId, newStatus) {
 
 export async function deleteBook(bookId) {
   try {
+    const userId = getAuthenticatedUserId();
     const snapshotDoc = await getBookDocumentById(bookId);
     if (!snapshotDoc) {
       throw new Error('Book not found');
     }
 
-    await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'books', snapshotDoc.id));
+    await deleteDoc(doc(db, 'users', userId, 'books', snapshotDoc.id));
     return { success: true };
   } catch (error) {
     throw new Error(`Failed to delete book: ${error instanceof Error ? error.message : 'Unknown error'}`);
