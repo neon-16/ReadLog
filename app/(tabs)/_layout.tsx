@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
-import { House, Compass, BarChart2, Settings } from 'lucide-react-native';
+import { BarChart2, Compass, House, Settings } from 'lucide-react-native';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -11,7 +12,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E5E7EB',
-          height: 60,
+          height: Platform.OS === 'web' ? 68 : 60,
+          paddingBottom: Platform.OS === 'web' ? 8 : 0,
         },
         tabBarLabelStyle: {
           fontSize: 11,

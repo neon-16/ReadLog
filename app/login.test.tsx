@@ -2,15 +2,13 @@ import LoginScreen from '@/app/login';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import React from 'react';
+import { Text } from 'react-native';
 
 const mockReplace = jest.fn();
 const mockSignIn = jest.fn();
 const mockResetPassword = jest.fn();
 
 jest.mock('expo-router', () => {
-  const ReactLib = require('react');
-  const RN = require('react-native');
-
   return {
     router: {
       replace: mockReplace,
@@ -18,7 +16,7 @@ jest.mock('expo-router', () => {
       back: jest.fn(),
     },
     Link: ({ children }: { children: React.ReactNode }) => (
-      <RN.Text>{children}</RN.Text>
+      <Text>{children}</Text>
     ),
   };
 });

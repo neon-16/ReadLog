@@ -117,9 +117,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   card: {
+    width: '100%',
+    maxWidth: 460,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
