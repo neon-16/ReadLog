@@ -1,6 +1,7 @@
 import OfflineBanner from '@/src/core/components/OfflineBanner';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
+import { useFocusEffect } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { memo, useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -83,9 +84,18 @@ export default function Discover() {
     hasSearched,
     hasMore,
     handleSearch,
+    resetDiscoverState,
     loadNextPage,
     handleAddBook,
   } = useDiscoverBooks(user);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        resetDiscoverState();
+      };
+    }, [resetDiscoverState])
+  );
 
   const keyExtractor = useCallback(
     (item: DiscoverBook, index: number) => `${item.externalId ?? item.title ?? 'book'}-${index}`,

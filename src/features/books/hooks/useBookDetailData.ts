@@ -59,6 +59,23 @@ export function useBookDetailData({ user, bookId, isOffline }: UseBookDetailData
     fetchBook();
   }, [user, bookId]);
 
+  const handleCurrentPageChange = useCallback((value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+
+    if (!digitsOnly) {
+      setCurrentPage('');
+      setError(null);
+      return;
+    }
+
+    const parsedPage = parseInt(digitsOnly, 10);
+    const maxPages = book?.totalPages ?? Number.MAX_SAFE_INTEGER;
+    const normalizedPage = Math.min(Math.max(parsedPage, 1), maxPages);
+
+    setCurrentPage(String(normalizedPage));
+    setError(null);
+  }, [book?.totalPages]);
+
   const handleSaveProgress = useCallback(async () => {
     if (!book) return;
 
@@ -68,10 +85,21 @@ export function useBookDetailData({ user, bookId, isOffline }: UseBookDetailData
     }
 
     try {
+      if (!currentPage) {
+        setError(`Current page must be between 1 and ${book.totalPages}`);
+        return;
+      }
+
+      const parsedPage = parseInt(currentPage, 10);
+      if (Number.isNaN(parsedPage) || parsedPage < 1 || parsedPage > book.totalPages) {
+        setError(`Current page must be between 1 and ${book.totalPages}`);
+        return;
+      }
+
       setSaving(true);
       setError(null);
       const updatedBook = await updateBookProgress(book.id, {
-        currentPage: parseInt(currentPage, 10) || 0,
+        currentPage: parsedPage,
         totalPages: book.totalPages,
       });
       setBook(updatedBook);
@@ -120,7 +148,7 @@ export function useBookDetailData({ user, bookId, isOffline }: UseBookDetailData
     book,
     loading,
     currentPage,
-    setCurrentPage,
+    handleCurrentPageChange,
     status,
     isDeleteModalVisible,
     saving,

@@ -1,13 +1,9 @@
+import { useUserProfileData } from '@/src/features/auth/hooks/useUserProfileData';
 import { getBookStats } from '@/src/services/bookService';
-import {
-    createInitialUserProfile,
-    getUserProfile,
-    updateUserDisplayName,
-    type UserProfile,
-} from '@/src/services/userService';
+import { updateUserDisplayName } from '@/src/services/userService';
 import { useFocusEffect } from 'expo-router';
 import type { User } from 'firebase/auth';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 type StatsState = {
   total: number;
@@ -19,8 +15,11 @@ type StatsState = {
 };
 
 export function useStatsData(user: User | null) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const {
+    profile,
+    profileLoading,
+    updateProfileLocally,
+  } = useUserProfileData(user, { createIfMissing: true });
   const [savingProfile, setSavingProfile] = useState(false);
   const [stats, setStats] = useState<StatsState>({
     total: 0,
@@ -34,44 +33,6 @@ export function useStatsData(user: User | null) {
   const [statsError, setStatsError] = useState<string | null>(null);
   const hasLoadedStatsRef = useRef(false);
   const statsRequestIdRef = useRef(0);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadProfile = async () => {
-      if (!user) {
-        if (isMounted) {
-          setProfileLoading(false);
-        }
-        return;
-      }
-
-      try {
-        let userProfile = await getUserProfile(user.uid);
-
-        if (!userProfile) {
-          await createInitialUserProfile(user.uid, user.email || 'User');
-          userProfile = await getUserProfile(user.uid);
-        }
-
-        if (isMounted) {
-          setProfile(userProfile);
-        }
-      } catch (loadError) {
-        console.error('Error loading profile:', loadError);
-      } finally {
-        if (isMounted) {
-          setProfileLoading(false);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
 
   const fetchStats = useCallback(async (showFullLoader = false) => {
     const requestId = ++statsRequestIdRef.current;
@@ -117,11 +78,11 @@ export function useStatsData(user: User | null) {
     setSavingProfile(true);
     try {
       await updateUserDisplayName(user.uid, newDisplayName);
-      setProfile((prev) => (prev ? { ...prev, displayName: newDisplayName } : null));
+      updateProfileLocally(profile ? { ...profile, displayName: newDisplayName } : null);
     } finally {
       setSavingProfile(false);
     }
-  }, [user]);
+  }, [profile, updateProfileLocally, user]);
 
   return {
     profile,

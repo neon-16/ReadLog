@@ -42,6 +42,14 @@ export function useDiscoverBooks(user: User | null) {
   const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
   const activeRequestIdRef = useRef(0);
 
+  const clearSearchState = useCallback(() => {
+    setSearchResults([]);
+    setSearchError(null);
+    setHasSearched(false);
+    setHasMore(false);
+    setCurrentPage(1);
+  }, []);
+
   const isCacheValid = useCallback((entry: CacheEntry | undefined) => {
     if (!entry) {
       return false;
@@ -53,11 +61,7 @@ export function useDiscoverBooks(user: User | null) {
     const normalizedQuery = query.trim().toLowerCase();
 
     if (normalizedQuery.length < MIN_SEARCH_LENGTH) {
-      setSearchResults([]);
-      setSearchError(null);
-      setHasSearched(false);
-      setHasMore(false);
-      setCurrentPage(1);
+      clearSearchState();
       return;
     }
 
@@ -120,7 +124,7 @@ export function useDiscoverBooks(user: User | null) {
         setIsSearching(false);
       }
     }
-  }, [isCacheValid, isOffline]);
+  }, [clearSearchState, isCacheValid, isOffline]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -130,20 +134,12 @@ export function useDiscoverBooks(user: User | null) {
     }
 
     if (query.trim().length === 0) {
-      setSearchResults([]);
-      setSearchError(null);
-      setHasSearched(false);
-      setHasMore(false);
-      setCurrentPage(1);
+      clearSearchState();
       return;
     }
 
     if (query.trim().length < MIN_SEARCH_LENGTH) {
-      setSearchResults([]);
-      setSearchError(null);
-      setHasSearched(false);
-      setHasMore(false);
-      setCurrentPage(1);
+      clearSearchState();
       return;
     }
 
@@ -151,7 +147,7 @@ export function useDiscoverBooks(user: User | null) {
     debounceTimerRef.current = setTimeout(() => {
       performSearch(query, 1);
     }, DEBOUNCE_DELAY);
-  }, [performSearch]);
+  }, [clearSearchState, performSearch]);
 
   const loadNextPage = useCallback(async () => {
     if (isSearching || !hasMore || searchQuery.trim().length < MIN_SEARCH_LENGTH) {
@@ -160,6 +156,17 @@ export function useDiscoverBooks(user: User | null) {
 
     await performSearch(searchQuery, currentPage + 1);
   }, [currentPage, hasMore, isSearching, performSearch, searchQuery]);
+
+  const resetDiscoverState = useCallback(() => {
+    activeRequestIdRef.current += 1;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    setSearchQuery('');
+    clearSearchState();
+    setIsSearching(false);
+  }, [clearSearchState]);
 
   useEffect(() => {
     return () => {
@@ -194,6 +201,7 @@ export function useDiscoverBooks(user: User | null) {
     hasSearched,
     hasMore,
     handleSearch,
+    resetDiscoverState,
     loadNextPage,
     handleAddBook,
   };

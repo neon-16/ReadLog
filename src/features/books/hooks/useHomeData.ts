@@ -1,13 +1,13 @@
+import { useUserProfileData } from '@/src/features/auth/hooks/useUserProfileData';
 import { getBooksByStatusPage } from '@/src/services/bookService';
-import { getUserProfile, type UserProfile } from '@/src/services/userService';
 import { useFocusEffect } from 'expo-router';
 import type { User } from 'firebase/auth';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 const HOME_PAGE_SIZE = 10;
 
 export function useHomeData(user: User | null) {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { profile } = useUserProfileData(user);
   const [readingBooks, setReadingBooks] = useState<any[]>([]);
   const [wantToReadBooks, setWantToReadBooks] = useState<any[]>([]);
   const [finishedBooks, setFinishedBooks] = useState<any[]>([]);
@@ -16,28 +16,6 @@ export function useHomeData(user: User | null) {
   const [error, setError] = useState<string | null>(null);
   const hasLoadedBooksRef = useRef(false);
   const requestIdRef = useRef(0);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadProfile = async () => {
-      if (!user) return;
-      try {
-        const userProfile = await getUserProfile(user.uid);
-        if (isMounted) {
-          setProfile(userProfile);
-        }
-      } catch (loadError) {
-        console.error('Error loading profile:', loadError);
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
 
   const fetchBooks = useCallback(async (showFullLoader = false) => {
     const requestId = ++requestIdRef.current;

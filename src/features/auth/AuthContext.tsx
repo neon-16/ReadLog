@@ -1,12 +1,14 @@
 import { loginUser } from '@/src/features/auth/utils/loginUser';
-import { auth, isFirebaseConfigured } from '@/src/services/firebaseConfig';
+import { auth, functions, isFirebaseConfigured } from '@/src/services/firebaseConfig';
 import {
     createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
     onAuthStateChanged,
     sendPasswordResetEmail,
+    type ActionCodeSettings,
     type User,
 } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import {
     createContext,
     useCallback,
@@ -32,6 +34,22 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function getResetActionCodeSettings(): ActionCodeSettings | undefined {
+  const resetUrl = process.env.EXPO_PUBLIC_PASSWORD_RESET_URL?.trim();
+
+  if (!resetUrl) return undefined;
+
+  try {
+    new URL(resetUrl);
+    return {
+      url: resetUrl,
+      handleCodeInApp: false,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function getReadableAuthError(message: string): string {
   if (message.includes('auth/invalid-email')) return 'Invalid email format.';
   if (message.includes('auth/user-not-found')) return 'No account found for this email.';
@@ -50,6 +68,14 @@ function getReadableResetError(message: string): string {
   if (message.includes('auth/too-many-requests')) return 'Too many requests. Please wait and try again.';
   if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
   return 'Failed to send reset email. Please try again.';
+}
+
+async function sendTransactionalResetEmail(email: string) {
+  const callResetEmail = httpsCallable<{ email: string }, { ok: boolean }>(
+    functions,
+    'sendPasswordResetEmailTransactional'
+  );
+  await callResetEmail({ email });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -93,8 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     const currentAuth = ensureAuthReady();
+    const normalizedEmail = normalizeEmail(email);
+    const actionCodeSettings = getResetActionCodeSettings();
+
     try {
-      await sendPasswordResetEmail(currentAuth, normalizeEmail(email));
+      await sendTransactionalResetEmail(normalizedEmail);
+      return;
+    } catch {
+      // Fall back to Firebase default email flow when function is not deployed or unavailable.
+    }
+
+    try {
+      if (actionCodeSettings) {
+        await sendPasswordResetEmail(currentAuth, normalizedEmail, actionCodeSettings);
+      } else {
+        await sendPasswordResetEmail(currentAuth, normalizedEmail);
+      }
     } catch (error) {
       throw new Error(getReadableResetError(String(error)));
     }

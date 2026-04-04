@@ -4,6 +4,31 @@ import { router } from 'expo-router';
 import type { User } from 'firebase/auth';
 import { useCallback, useState } from 'react';
 
+type ManualBookDraft = {
+  title: string;
+  author: string;
+  totalPages: string;
+};
+
+function validateDraft(draft: ManualBookDraft): string | null {
+  if (!draft.title.trim()) {
+    return 'Please enter a book title.';
+  }
+  if (!draft.author.trim()) {
+    return 'Please enter an author name.';
+  }
+  if (!draft.totalPages.trim()) {
+    return 'Please enter total pages.';
+  }
+
+  const pages = parseInt(draft.totalPages, 10);
+  if (Number.isNaN(pages) || pages < 0) {
+    return 'Please enter a valid number for total pages.';
+  }
+
+  return null;
+}
+
 export function useAddManualBook(user: User | null) {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
@@ -13,16 +38,9 @@ export function useAddManualBook(user: User | null) {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleAddBook = useCallback(async () => {
-    if (!title.trim()) {
-      showAlert('Validation Error', 'Please enter a book title.');
-      return;
-    }
-    if (!author.trim()) {
-      showAlert('Validation Error', 'Please enter an author name.');
-      return;
-    }
-    if (!totalPages.trim()) {
-      showAlert('Validation Error', 'Please enter total pages.');
+    const validationError = validateDraft({ title, author, totalPages });
+    if (validationError) {
+      showAlert('Validation Error', validationError);
       return;
     }
 
@@ -34,12 +52,6 @@ export function useAddManualBook(user: User | null) {
     setIsSaving(true);
     try {
       const pages = parseInt(totalPages, 10);
-      if (isNaN(pages) || pages < 0) {
-        showAlert('Validation Error', 'Please enter a valid number for total pages.');
-        setIsSaving(false);
-        return;
-      }
-
       const dbGenre = genre.toLowerCase();
 
       await addBook({

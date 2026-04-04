@@ -16,6 +16,61 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Optional auth email config
+
+To customize password reset links sent by Firebase Auth, set:
+
+```bash
+EXPO_PUBLIC_PASSWORD_RESET_URL=https://your-domain.com/reset-password
+```
+
+The URL must be added to Firebase Auth authorized domains.
+
+## Transactional password reset emails (recommended)
+
+This project can send reset emails through a Firebase Cloud Function using Resend, which typically has better inbox placement than default template emails.
+
+### 1) Install function dependencies
+
+```bash
+cd functions
+npm install
+```
+
+### 2) Configure server-side secrets/env
+
+Set secret for Resend API key:
+
+```bash
+firebase functions:secrets:set RESEND_API_KEY
+```
+
+Set runtime env vars for function deploy:
+
+```bash
+export RESET_EMAIL_FROM="ReadLog <noreply@yourdomain.com>"
+export RESET_EMAIL_REPLY_TO="support@yourdomain.com"
+export PASSWORD_RESET_CONTINUE_URL="https://your-domain.com/reset-password"
+export APP_NAME="ReadLog"
+export FUNCTIONS_REGION="us-central1"
+```
+
+### 3) Deploy functions
+
+```bash
+firebase deploy --only functions
+```
+
+### 4) Client env
+
+Set function region in app env when using non-default region:
+
+```bash
+EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION=us-central1
+```
+
+The app calls callable function `sendPasswordResetEmailTransactional` first, then falls back to Firebase default `sendPasswordResetEmail` if function is unavailable.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

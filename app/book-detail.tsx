@@ -1,3 +1,7 @@
+import OfflineBanner from '@/src/core/components/OfflineBanner';
+import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useBookDetailData } from '@/src/features/books/hooks/useBookDetailData';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -5,10 +9,6 @@ import BookCover from '../components/shared/BookCover';
 import Button from '../components/shared/Button';
 import DeleteModal from '../components/shared/DeleteModal';
 import ProgressBar from '../components/shared/ProgressBar';
-import OfflineBanner from '@/src/core/components/OfflineBanner';
-import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { useBookDetailData } from '@/src/features/books/hooks/useBookDetailData';
 
 export default function BookDetail() {
   const { isOffline } = useNetworkStatus();
@@ -20,7 +20,7 @@ export default function BookDetail() {
     book,
     loading,
     currentPage,
-    setCurrentPage,
+    handleCurrentPageChange,
     status,
     isDeleteModalVisible,
     saving,
@@ -116,9 +116,9 @@ export default function BookDetail() {
           <TextInput
             style={styles.textInput}
             value={currentPage}
-            onChangeText={setCurrentPage}
+            onChangeText={handleCurrentPageChange}
             keyboardType="number-pad"
-            placeholder="0"
+            placeholder="1"
             editable
           />
         </View>

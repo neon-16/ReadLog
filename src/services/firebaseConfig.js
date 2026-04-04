@@ -2,10 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
 import {
-  getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
+    getFirestore,
+    initializeFirestore,
+    persistentLocalCache,
 } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 
 const firebaseConfig = {
@@ -49,4 +50,7 @@ if (Platform.OS === 'web') {
   }
 }
 
-export { app, db, auth };
+const functionsRegion = process.env.EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1';
+const functions = getFunctions(app, functionsRegion);
+
+export { app, auth, db, functions };
