@@ -18,9 +18,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Optional auth email config
 
-To customize password reset links sent by Firebase Auth, set:
+Spark-safe default:
+
+- Leave custom reset URL disabled and Firebase will use its hosted reset page link.
+
+To use your own reset page URL, enable and set:
 
 ```bash
+EXPO_PUBLIC_USE_CUSTOM_RESET_URL=true
 EXPO_PUBLIC_PASSWORD_RESET_URL=https://your-domain.com/reset-password
 ```
 
@@ -55,6 +60,11 @@ export APP_NAME="ReadLog"
 export FUNCTIONS_REGION="us-central1"
 ```
 
+Notes:
+- `PASSWORD_RESET_CONTINUE_URL` should be an `https://` web URL (not a custom app scheme).
+- Use a verified sending domain for `RESET_EMAIL_FROM` (SPF + DKIM configured in Resend).
+- Add your sending domain DMARC record to improve inbox placement.
+
 ### 3) Deploy functions
 
 ```bash
@@ -69,7 +79,14 @@ Set function region in app env when using non-default region:
 EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION=us-central1
 ```
 
-The app calls callable function `sendPasswordResetEmailTransactional` first, then falls back to Firebase default `sendPasswordResetEmail` if function is unavailable.
+Spark-friendly default:
+
+- By default, the app uses Firebase built-in `sendPasswordResetEmail`.
+- To use transactional reset emails via Cloud Functions/Resend, enable this client env:
+
+```bash
+EXPO_PUBLIC_USE_TRANSACTIONAL_RESET=true
+```
 
 In the output, you'll find options to open the app in a
 

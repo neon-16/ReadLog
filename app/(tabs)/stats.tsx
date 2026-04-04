@@ -1,11 +1,11 @@
+import OfflineBanner from '@/src/core/components/OfflineBanner';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useStatsData } from '@/src/features/books/hooks/useStatsData';
 import { Bookmark, BookOpen, CheckCircle, Edit3, Library, User } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import EditProfileModal from '../../components/shared/EditProfileModal';
 import ProgressBar from '../../components/shared/ProgressBar';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { useStatsData } from '@/src/features/books/hooks/useStatsData';
-import OfflineBanner from '@/src/core/components/OfflineBanner';
 
 function StatCard({ 
   title, 
@@ -31,6 +31,7 @@ function StatCard({
 
 export default function Stats() {
   const { user } = useAuth();
+  const currentYear = new Date().getFullYear();
   const [editModalVisible, setEditModalVisible] = useState(false);
   const {
     profile,
@@ -118,7 +119,7 @@ export default function Stats() {
             <View style={styles.goalSection}>
               <Text style={styles.goalTitle}>Reading Goal</Text>
               <Text style={styles.goalText}>
-                {stats.finished} of {stats.readingGoal} books for 2024.
+                {stats.finished} of {stats.readingGoal} books for {currentYear}.
               </Text>
               <ProgressBar current={stats.finished} total={stats.readingGoal} />
             </View>

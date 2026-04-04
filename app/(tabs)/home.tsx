@@ -42,7 +42,6 @@ export default function Home() {
     wantToReadBooks,
     finishedBooks,
     loading,
-    refreshing,
     error,
     fetchBooks,
   } = useHomeData(user);
@@ -72,7 +71,6 @@ export default function Home() {
 
       <View style={styles.subtitleContainer}>
         <Text style={styles.subtitle}>{readingBooks.length} BOOKS ACTIVE</Text>
-        {refreshing && <Text style={styles.refreshingText}>Refreshing...</Text>}
       </View>
 
       {loading ? (
@@ -215,11 +213,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2563EB',
     letterSpacing: 1,
-  },
-  refreshingText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#6B7280',
   },
   section: {
     paddingHorizontal: 20,

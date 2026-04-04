@@ -1,7 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Button from './Button';
 import Input from './Input';
-import { useState } from 'react';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -20,6 +20,13 @@ export default function EditProfileModal({
 }: EditProfileModalProps) {
   const [newDisplayName, setNewDisplayName] = useState(displayName);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setNewDisplayName(displayName);
+      setError('');
+    }
+  }, [displayName, visible]);
 
   const handleSave = async () => {
     setError('');
@@ -44,7 +51,8 @@ export default function EditProfileModal({
       transparent
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <View style={styles.overlay}>
+        <Pressable style={styles.overlayBackdrop} onPress={onClose} />
         <View style={styles.modalContent}>
           <Text style={styles.title}>Edit Profile</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -63,6 +71,8 @@ export default function EditProfileModal({
                 variant="cancel"
                 onPress={onClose}
                 disabled={isLoading}
+                style={styles.actionButton}
+                textStyle={styles.actionButtonText}
               >
                 Cancel
               </Button>
@@ -70,13 +80,15 @@ export default function EditProfileModal({
                 variant="primary"
                 onPress={handleSave}
                 disabled={isLoading}
+                style={styles.actionButton}
+                textStyle={styles.actionButtonText}
               >
                 {isLoading ? 'Saving...' : 'Save'}
               </Button>
             </View>
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -84,10 +96,14 @@ export default function EditProfileModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    position: 'relative',
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
@@ -116,5 +132,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 20,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minHeight: 44,
+  },
+  actionButtonText: {
+    fontSize: 15,
   },
 });

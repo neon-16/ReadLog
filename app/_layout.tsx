@@ -23,6 +23,7 @@ export default function RootLayout() {
         <Stack.Screen name="splash" />
         <Stack.Screen name="login" />
         <Stack.Screen name="signup" />
+        <Stack.Screen name="reset-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="add-manual" />
         <Stack.Screen name="add-online" />

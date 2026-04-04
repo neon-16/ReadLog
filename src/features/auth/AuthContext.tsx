@@ -35,14 +35,21 @@ function normalizeEmail(email: string): string {
 }
 
 function getResetActionCodeSettings(): ActionCodeSettings | undefined {
+  const useCustomResetUrl = process.env.EXPO_PUBLIC_USE_CUSTOM_RESET_URL === 'true';
+  if (!useCustomResetUrl) return undefined;
+
   const resetUrl = process.env.EXPO_PUBLIC_PASSWORD_RESET_URL?.trim();
 
   if (!resetUrl) return undefined;
 
   try {
-    new URL(resetUrl);
+    const parsed = new URL(resetUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return undefined;
+    }
+
     return {
-      url: resetUrl,
+      url: parsed.toString(),
       handleCodeInApp: false,
     };
   } catch {
@@ -68,6 +75,25 @@ function getReadableResetError(message: string): string {
   if (message.includes('auth/too-many-requests')) return 'Too many requests. Please wait and try again.';
   if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
   return 'Failed to send reset email. Please try again.';
+}
+
+function getReadableTransactionalResetError(message: string): string {
+  if (message.includes('functions/unavailable')) {
+    return 'Reset email service is unavailable right now. Please try again in a moment.';
+  }
+  if (message.includes('functions/not-found')) {
+    return 'Reset email service is not deployed. Please contact support.';
+  }
+  if (message.includes('functions/permission-denied')) {
+    return 'Reset email service permission denied. Please contact support.';
+  }
+  if (message.includes('functions/internal')) {
+    return 'Reset email service failed. Please try again later.';
+  }
+  if (message.includes('network-request-failed')) {
+    return 'Network error while sending reset email. Please try again.';
+  }
+  return 'Unable to send reset email at the moment. Please try again later.';
 }
 
 async function sendTransactionalResetEmail(email: string) {
@@ -121,18 +147,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentAuth = ensureAuthReady();
     const normalizedEmail = normalizeEmail(email);
     const actionCodeSettings = getResetActionCodeSettings();
+    const useTransactionalReset = process.env.EXPO_PUBLIC_USE_TRANSACTIONAL_RESET === 'true';
 
-    try {
-      await sendTransactionalResetEmail(normalizedEmail);
-      return;
-    } catch {
-      // Fall back to Firebase default email flow when function is not deployed or unavailable.
+    if (useTransactionalReset) {
+      try {
+        await sendTransactionalResetEmail(normalizedEmail);
+        return;
+      } catch (transactionalError) {
+        throw new Error(getReadableTransactionalResetError(String(transactionalError)));
+      }
     }
 
     try {
       if (actionCodeSettings) {
         await sendPasswordResetEmail(currentAuth, normalizedEmail, actionCodeSettings);
       } else {
+        // Spark-safe default: Firebase hosted reset page link.
         await sendPasswordResetEmail(currentAuth, normalizedEmail);
       }
     } catch (error) {

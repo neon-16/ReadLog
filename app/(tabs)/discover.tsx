@@ -1,77 +1,14 @@
 import OfflineBanner from '@/src/core/components/OfflineBanner';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import DiscoverBookItem, { type DiscoverBook } from '@/src/features/books/components/DiscoverBookItem';
 import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
 import { useFocusEffect } from 'expo-router';
 import { Search } from 'lucide-react-native';
-import { memo, useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AppHeader from '../../components/shared/AppHeader';
-import BookCover from '../../components/shared/BookCover';
-import { showAlert } from '../../utils/alert';
-
-type DiscoverBook = {
-  title: string;
-  author: string;
-  genre: string;
-  source: string;
-  externalId?: string;
-  year?: number;
-  coverUrl?: string | null;
-  totalPages?: number;
-};
 
 const ROW_HEIGHT = 126;
-
-const BookItem = memo(function BookItem({ book, onAdd }: { book: DiscoverBook; onAdd: (book: DiscoverBook) => Promise<void> }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [isAdded, setIsAdded] = useState(false);
-
-  const handleAdd = useCallback(async () => {
-    setIsAdding(true);
-    try {
-      await onAdd(book);
-      setIsAdded(true);
-      showAlert(
-        'Added to Library',
-        "Book added as 'Want to Read'."
-      );
-    } catch (error) {
-      showAlert(
-        'Error',
-        error instanceof Error ? error.message : 'Failed to add book'
-      );
-    } finally {
-      setIsAdding(false);
-    }
-  }, [book, onAdd]);
-
-  return (
-    <View style={styles.bookItem}>
-      <BookCover genre={book.genre} size="small" imageUrl={book.coverUrl} />
-      <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={1}>{book.title ?? 'Untitled'}</Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>{book.author ?? 'Unknown Author'}</Text>
-        {book.year && <Text style={styles.bookYear}>{book.year}</Text>}
-        <View style={styles.genreBadge}>
-          <Text style={styles.genreText}>{book.genre?.toUpperCase?.() ?? 'OTHER'}</Text>
-        </View>
-      </View>
-      <Pressable 
-        style={[styles.addButton, isAdded && styles.addedButton]} 
-        onPress={handleAdd}
-        disabled={isAdded || isAdding}
-      >
-        {isAdding ? (
-          <ActivityIndicator size="small" color={isAdded ? '#6B7280' : '#FFFFFF'} />
-        ) : (
-          <Text style={[styles.addButtonText, isAdded && styles.addedButtonText]}>
-            {isAdded ? 'Added' : 'Add'}
-          </Text>
-        )}
-      </Pressable>
-    </View>
-  );
-});
 
 export default function Discover() {
   const { user } = useAuth();
@@ -103,7 +40,7 @@ export default function Discover() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: DiscoverBook }) => <BookItem book={item} onAdd={handleAddBook} />,
+    ({ item }: { item: DiscoverBook }) => <DiscoverBookItem book={item} onAdd={handleAddBook} styles={styles} />,
     [handleAddBook]
   );
 

@@ -1,12 +1,11 @@
-import {
-  doc,
-  getDoc,
-  getFirestore,
-  setDoc,
-  updateDoc,
-  type Firestore,
-} from 'firebase/firestore';
 import { app, isFirebaseConfigured } from '@/src/services/firebaseConfig';
+import {
+    doc,
+    getDoc,
+    getFirestore,
+    setDoc,
+    type Firestore,
+} from 'firebase/firestore';
 
 export interface UserProfile {
   displayName: string;
@@ -57,7 +56,15 @@ export async function updateUserDisplayName(
 
   try {
     const userDocRef = doc(firestoreDb, 'users', uid);
-    await updateDoc(userDocRef, { 'profile.displayName': displayName });
+    await setDoc(
+      userDocRef,
+      {
+        profile: {
+          displayName,
+        },
+      },
+      { merge: true }
+    );
   } catch (error) {
     console.error('Error updating display name:', error);
     throw error;

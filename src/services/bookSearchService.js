@@ -4,6 +4,7 @@
  */
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org/search.json';
+const REQUEST_TIMEOUT_MS = 10000;
 
 /**
  * Maps Open Library genres/subjects to app genres
@@ -50,6 +51,19 @@ function createCoverUrl(coverId, size = 'S') {
   return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
 }
 
+async function fetchWithTimeout(url, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Search books from Open Library API
  * @param {string} query - Search query (title or author)
@@ -66,9 +80,7 @@ export async function searchOnlineBooks(query, { page = 1, pageSize = 15 } = {})
     const safePageSize = Math.max(1, Math.min(20, Number(pageSize) || 15));
     const url = `${OPEN_LIBRARY_API}?q=${encodedQuery}&page=${safePage}&limit=${safePageSize}&fields=key,title,author_name,first_publish_year,cover_i,subject,isbn,number_of_pages_median`;
 
-    const response = await fetch(url, {
-      timeout: 10000,
-    });
+    const response = await fetchWithTimeout(url);
 
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
@@ -101,7 +113,10 @@ export async function searchOnlineBooks(query, { page = 1, pageSize = 15 } = {})
       hasMore: books.length === safePageSize,
     };
   } catch (error) {
-    console.error('Book search error:', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Search timed out. Please try again.');
+    }
+
     throw new Error(
       error instanceof Error
         ? `Search failed: ${error.message}`

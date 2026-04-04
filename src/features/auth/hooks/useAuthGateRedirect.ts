@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
-import { router, useRootNavigationState, useSegments } from 'expo-router';
 import { useAuth } from '@/src/features/auth/AuthContext';
+import { router, useRootNavigationState, useSegments } from 'expo-router';
+import { useEffect } from 'react';
 
 export function useAuthGateRedirect() {
   const { user, loading } = useAuth();
@@ -12,7 +12,8 @@ export function useAuthGateRedirect() {
 
     const firstSegment = segments[0] as string;
     const isAuthScreen = firstSegment === 'login' || firstSegment === 'signup';
-    const isPublicScreen = firstSegment === 'index' || firstSegment === 'splash' || isAuthScreen;
+    const isPasswordResetScreen = firstSegment === 'reset-password';
+    const isPublicScreen = firstSegment === 'index' || firstSegment === 'splash' || isAuthScreen || isPasswordResetScreen;
 
     if (!user && !isPublicScreen) {
       router.replace('/login');

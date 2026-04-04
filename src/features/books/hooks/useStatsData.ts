@@ -18,6 +18,7 @@ export function useStatsData(user: User | null) {
   const {
     profile,
     profileLoading,
+    refreshProfile,
     updateProfileLocally,
   } = useUserProfileData(user, { createIfMissing: true });
   const [savingProfile, setSavingProfile] = useState(false);
@@ -78,11 +79,15 @@ export function useStatsData(user: User | null) {
     setSavingProfile(true);
     try {
       await updateUserDisplayName(user.uid, newDisplayName);
-      updateProfileLocally(profile ? { ...profile, displayName: newDisplayName } : null);
+      updateProfileLocally({
+        displayName: newDisplayName,
+        email: profile?.email || user.email || '',
+      });
+      await refreshProfile();
     } finally {
       setSavingProfile(false);
     }
-  }, [profile, updateProfileLocally, user]);
+  }, [profile?.email, refreshProfile, updateProfileLocally, user]);
 
   return {
     profile,

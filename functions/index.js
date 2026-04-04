@@ -14,17 +14,61 @@ function isValidEmail(email) {
 }
 
 function buildEmailHtml(resetLink, appName) {
+  const safeAppName = escapeHtml(appName);
+  const safeResetLink = escapeHtml(resetLink);
+
   return `
-  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
-    <h2 style="margin-bottom: 8px;">Reset your ${appName} password</h2>
-    <p style="line-height: 1.6;">We received a request to reset your password. Click the button below to continue.</p>
-    <p style="margin: 24px 0;">
-      <a href="${resetLink}" style="background: #2563EB; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; display: inline-block; font-weight: 600;">Reset Password</a>
+  <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827; line-height: 1.6;">
+    <p style="font-size: 13px; color: #6B7280; margin-bottom: 6px;">Password reset request</p>
+    <h2 style="margin: 0 0 12px 0;">Reset your ${safeAppName} password</h2>
+    <p>We received a request to reset your password.</p>
+    <p style="margin: 18px 0 22px;">
+      <a href="${safeResetLink}" style="background: #2563EB; color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 8px; display: inline-block; font-weight: 600;">Reset password</a>
     </p>
-    <p style="line-height: 1.6;">If you did not request this, you can safely ignore this email.</p>
-    <p style="font-size: 12px; color: #6B7280; margin-top: 24px;">If the button does not work, copy and paste this link into your browser:</p>
-    <p style="font-size: 12px; word-break: break-all; color: #374151;">${resetLink}</p>
+    <p style="margin: 0;">If the button does not work, open this link:</p>
+    <p style="margin: 8px 0 0; word-break: break-all;">
+      <a href="${safeResetLink}" style="color: #2563EB; text-decoration: underline;">${safeResetLink}</a>
+    </p>
+    <p style="font-size: 12px; color: #6B7280; margin-top: 22px;">If you did not request this, you can safely ignore this email.</p>
   </div>`;
+}
+
+function buildEmailText(resetLink, appName) {
+  return [
+    `${appName} password reset`,
+    "",
+    "We received a request to reset your password.",
+    "",
+    `Open this link to continue: ${resetLink}`,
+    "",
+    "If you did not request this, you can safely ignore this email.",
+  ].join("\n");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeContinueUrl(rawUrl) {
+  const value = String(rawUrl || "").trim();
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeEmail(rawEmail) {
@@ -36,7 +80,7 @@ function getEmailConfig() {
     appName: process.env.APP_NAME || DEFAULT_APP_NAME,
     fromEmail: process.env.RESET_EMAIL_FROM,
     replyTo: process.env.RESET_EMAIL_REPLY_TO,
-    continueUrl: process.env.PASSWORD_RESET_CONTINUE_URL,
+    continueUrl: normalizeContinueUrl(process.env.PASSWORD_RESET_CONTINUE_URL),
     resendApiKey: resendApiKeySecret.value(),
   };
 
@@ -77,20 +121,43 @@ async function createResetLink(email, continueUrl) {
     : admin.auth().generatePasswordResetLink(email);
 }
 
+function buildDirectResetLink(generatedResetLink, continueUrl) {
+  if (!continueUrl) {
+    return generatedResetLink;
+  }
+
+  try {
+    const sourceUrl = new URL(generatedResetLink);
+    const oobCode = sourceUrl.searchParams.get("oobCode");
+    if (!oobCode) {
+      return generatedResetLink;
+    }
+
+    const destinationUrl = new URL(continueUrl);
+    destinationUrl.searchParams.set("mode", "resetPassword");
+    destinationUrl.searchParams.set("oobCode", oobCode);
+    return destinationUrl.toString();
+  } catch {
+    return generatedResetLink;
+  }
+}
+
 async function sendResetEmail(email, config) {
-  const resetLink = await createResetLink(email, config.continueUrl);
+  const generatedResetLink = await createResetLink(email, config.continueUrl);
+  const resetLink = buildDirectResetLink(generatedResetLink, config.continueUrl);
 
   await sendWithResend({
     apiKey: config.resendApiKey,
     from: config.fromEmail,
     to: email,
-    subject: `Reset your ${config.appName} password`,
+    subject: `${config.appName} password reset instructions`,
     html: buildEmailHtml(resetLink, config.appName),
+    text: buildEmailText(resetLink, config.appName),
     replyTo: config.replyTo,
   });
 }
 
-async function sendWithResend({ apiKey, from, to, subject, html, replyTo }) {
+async function sendWithResend({ apiKey, from, to, subject, html, text, replyTo }) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -102,6 +169,7 @@ async function sendWithResend({ apiKey, from, to, subject, html, replyTo }) {
       to,
       subject,
       html,
+      text,
       ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });

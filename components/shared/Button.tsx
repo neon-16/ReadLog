@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 interface ButtonProps {
@@ -8,6 +9,8 @@ interface ButtonProps {
   children: string;
   disabled?: boolean;
   testID?: string;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export default function Button({
@@ -17,6 +20,8 @@ export default function Button({
   children,
   disabled = false,
   testID,
+  style,
+  textStyle,
 }: ButtonProps) {
   return (
     <Pressable 
@@ -26,7 +31,8 @@ export default function Button({
         variant === 'secondary' && styles.secondary,
         variant === 'danger' && styles.danger,
         variant === 'cancel' && styles.cancel,
-        disabled && styles.disabled
+        disabled && styles.disabled,
+        style,
       ]} 
       onPress={onPress}
       disabled={disabled}
@@ -39,6 +45,7 @@ export default function Button({
         variant === 'secondary' && styles.secondaryText,
         variant === 'danger' && styles.dangerText,
         variant === 'cancel' && styles.cancelText,
+        textStyle,
       ]}>
         {children}
       </Text>
