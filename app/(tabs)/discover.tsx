@@ -19,8 +19,10 @@ export default function Discover() {
     isSearching,
     searchError,
     hasSearched,
+    recentSearches,
     hasMore,
     handleSearch,
+    clearRecentSearches,
     resetDiscoverState,
     loadNextPage,
     handleAddBook,
@@ -88,6 +90,28 @@ export default function Discover() {
               )}
             </View>
           </View>
+
+          {searchQuery.trim().length === 0 && recentSearches.length > 0 && (
+            <View style={styles.historySection}>
+              <View style={styles.historyHeader}>
+                <Text style={styles.historyTitle}>Recent Searches</Text>
+                <Pressable onPress={clearRecentSearches}>
+                  <Text style={styles.historyClearText}>Clear All</Text>
+                </Pressable>
+              </View>
+              <View style={styles.historyChipList}>
+                {recentSearches.map((item) => (
+                  <Pressable
+                    key={item}
+                    style={styles.historyChip}
+                    onPress={() => handleSearch(item)}
+                  >
+                    <Text style={styles.historyChipText}>{item}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
 
           {isSearching ? (
             <View style={styles.centerContainer}>
@@ -198,6 +222,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2563EB',
     fontWeight: '400',
+  },
+  historySection: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  historyTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    letterSpacing: 1,
+  },
+  historyClearText: {
+    fontSize: 13,
+    color: '#2563EB',
+    fontWeight: '500',
+  },
+  historyChipList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  historyChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  historyChipText: {
+    fontSize: 13,
+    color: '#374151',
   },
   sectionLabelContainer: {
     paddingHorizontal: 20,

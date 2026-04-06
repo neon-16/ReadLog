@@ -14,6 +14,14 @@ type StatsState = {
   goalProgress: number;
 };
 
+const toTitleCaseName = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+
 export function useStatsData(user: User | null) {
   const {
     profile,
@@ -76,11 +84,13 @@ export function useStatsData(user: User | null) {
   const handleUpdateDisplayName = useCallback(async (newDisplayName: string) => {
     if (!user) return;
 
+    const normalizedDisplayName = toTitleCaseName(newDisplayName);
+
     setSavingProfile(true);
     try {
-      await updateUserDisplayName(user.uid, newDisplayName);
+      await updateUserDisplayName(user.uid, normalizedDisplayName);
       updateProfileLocally({
-        displayName: newDisplayName,
+        displayName: normalizedDisplayName,
         email: profile?.email || user.email || '',
       });
       await refreshProfile();

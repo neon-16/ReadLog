@@ -2,6 +2,7 @@ import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
 import { searchOnlineBooks } from '@/src/services/bookSearchService';
 import { addBook } from '@/src/services/bookService';
 import { showAlert } from '@/utils/alert';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from 'firebase/auth';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -9,6 +10,9 @@ const DEBOUNCE_DELAY = 500;
 const MIN_SEARCH_LENGTH = 2;
 const SEARCH_PAGE_SIZE = 15;
 const CACHE_TTL_MS = 60 * 1000;
+const MAX_RECENT_SEARCHES = 6;
+
+const getSearchHistoryKey = (uid?: string) => `discover:recent-searches:${uid || 'guest'}`;
 
 type SearchResultItem = {
   title: string;
@@ -36,6 +40,7 @@ export function useDiscoverBooks(user: User | null) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,6 +61,54 @@ export function useDiscoverBooks(user: User | null) {
     }
     return Date.now() - entry.timestamp < CACHE_TTL_MS;
   }, []);
+
+  const persistRecentSearches = useCallback(async (searches: string[]) => {
+    try {
+      await AsyncStorage.setItem(getSearchHistoryKey(user?.uid), JSON.stringify(searches));
+    } catch {
+      // Ignore persistence errors and keep runtime state usable.
+    }
+  }, [user?.uid]);
+
+  const saveSearchToHistory = useCallback((query: string) => {
+    const normalized = query.trim();
+    if (normalized.length < MIN_SEARCH_LENGTH) {
+      return;
+    }
+
+    setRecentSearches((prev) => {
+      const next = [
+        normalized,
+        ...prev.filter((item) => item.toLowerCase() !== normalized.toLowerCase()),
+      ].slice(0, MAX_RECENT_SEARCHES);
+      void persistRecentSearches(next);
+      return next;
+    });
+  }, [persistRecentSearches]);
+
+  const loadRecentSearches = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem(getSearchHistoryKey(user?.uid));
+      if (!stored) {
+        setRecentSearches([]);
+        return;
+      }
+
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setRecentSearches(parsed.filter((item): item is string => typeof item === 'string'));
+      } else {
+        setRecentSearches([]);
+      }
+    } catch {
+      setRecentSearches([]);
+    }
+  }, [user?.uid]);
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([]);
+    void AsyncStorage.removeItem(getSearchHistoryKey(user?.uid));
+  }, [user?.uid]);
 
   const performSearch = useCallback(async (query: string, page = 1) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -106,6 +159,9 @@ export function useDiscoverBooks(user: User | null) {
       setSearchResults((prev) => (page === 1 ? books : [...prev, ...books]));
       setCurrentPage(page);
       setHasMore(hasNextPage);
+      if (page === 1 && books.length > 0) {
+        saveSearchToHistory(query);
+      }
 
       if (page === 1 && books.length === 0) {
         setSearchError('No books found. Try a different search.');
@@ -124,7 +180,7 @@ export function useDiscoverBooks(user: User | null) {
         setIsSearching(false);
       }
     }
-  }, [clearSearchState, isCacheValid, isOffline]);
+  }, [clearSearchState, isCacheValid, isOffline, saveSearchToHistory]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -169,13 +225,15 @@ export function useDiscoverBooks(user: User | null) {
   }, [clearSearchState]);
 
   useEffect(() => {
+    loadRecentSearches();
+
     return () => {
       activeRequestIdRef.current += 1;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, []);
+  }, [loadRecentSearches]);
 
   const handleAddBook = useCallback(async (book: SearchResultItem) => {
     if (!user) {
@@ -199,8 +257,10 @@ export function useDiscoverBooks(user: User | null) {
     isSearching,
     searchError,
     hasSearched,
+    recentSearches,
     hasMore,
     handleSearch,
+    clearRecentSearches,
     resetDiscoverState,
     loadNextPage,
     handleAddBook,
