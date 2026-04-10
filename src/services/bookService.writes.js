@@ -11,15 +11,28 @@ import {
     addDoc,
     deleteDoc,
     doc,
+    getDoc,
     getDocs,
     serverTimestamp,
     updateDoc,
     writeBatch,
 } from 'firebase/firestore';
 
-export async function addBook({ title, author, totalPages, genre, source }) {
+function toSafeBookStatus(value) {
+  return ['want_to_read', 'reading', 'finished'].includes(value) ? value : 'want_to_read';
+}
+
+export async function addBook({ title, author, totalPages, genre, source, status }) {
   try {
+    const userId = getAuthenticatedUserId();
     const booksRef = getUserBooksRef();
+    const requestedStatus = toSafeBookStatus(status);
+
+    let defaultStatus = requestedStatus;
+    if (!status) {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      defaultStatus = toSafeBookStatus(userDoc.data()?.defaultBookStatus);
+    }
 
     const baseBook = new Book({
       title,
@@ -27,7 +40,7 @@ export async function addBook({ title, author, totalPages, genre, source }) {
       totalPages,
       genre,
       source,
-      status: 'want_to_read',
+      status: defaultStatus,
       currentPage: 0,
       progress: 0,
       createdAt: null,
@@ -131,6 +144,58 @@ export async function updateBookStatus(bookId, newStatus) {
     return updatedBook;
   } catch (error) {
     throw new Error(`Failed to update book status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function updateAllBooksStatus(newStatus) {
+  try {
+    const booksRef = getUserBooksRef();
+    const snapshot = await getDocs(booksRef);
+    const safeStatus = ['want_to_read', 'reading', 'finished'].includes(newStatus)
+      ? newStatus
+      : 'want_to_read';
+
+    if (snapshot.empty) {
+      return { success: true, updatedCount: 0, status: safeStatus };
+    }
+
+    let batch = writeBatch(db);
+    let operationCount = 0;
+    let updatedCount = 0;
+
+    for (const snapshotDoc of snapshot.docs) {
+      const book = Book.fromFirestore(snapshotDoc);
+      const updatedBook = new Book({
+        ...book.toFirestore(),
+        id: snapshotDoc.id,
+        status: safeStatus,
+        createdAt: book.createdAt,
+      });
+
+      batch.update(snapshotDoc.ref, {
+        status: updatedBook.status,
+        currentPage: updatedBook.currentPage,
+        progress: updatedBook.progress,
+      });
+
+      operationCount += 1;
+      updatedCount += 1;
+
+      // Keep room under Firestore's max 500 operations per batch.
+      if (operationCount >= 450) {
+        await batch.commit();
+        batch = writeBatch(db);
+        operationCount = 0;
+      }
+    }
+
+    if (operationCount > 0) {
+      await batch.commit();
+    }
+
+    return { success: true, updatedCount, status: safeStatus };
+  } catch (error) {
+    throw new Error(`Failed to update all books status: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

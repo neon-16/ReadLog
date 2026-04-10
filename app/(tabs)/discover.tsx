@@ -5,7 +5,7 @@ import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
 import { useFocusEffect } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import AppHeader from '../../components/shared/AppHeader';
 
 const ROW_HEIGHT = 126;
@@ -30,6 +30,8 @@ export default function Discover() {
 
   useFocusEffect(
     useCallback(() => {
+      Keyboard.dismiss();
+
       return () => {
         resetDiscoverState();
       };
@@ -56,117 +58,121 @@ export default function Discover() {
   );
 
   return (
-    <View style={styles.container}>
-      <AppHeader title="Discover" variant="centered" showBackButton backIcon="chevron" />
-      <OfflineBanner />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <AppHeader title="Discover" variant="centered" showBackButton backIcon="chevron" />
+        <OfflineBanner />
 
-      {isOffline ? (
-        <View style={styles.offlineContainer}>
-          <Text style={styles.offlineText}>
-            Discover requires an internet connection
-          </Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputWrapper}>
-              <Search size={20} color="#6B7280" strokeWidth={2} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by title or author..."
-                value={searchQuery}
-                onChangeText={handleSearch}
-                placeholderTextColor="#6B7280"
-                editable={!isSearching}
-              />
-              {searchQuery.length > 0 && (
-                <Pressable 
-                  onPress={() => handleSearch('')} 
-                  style={styles.cancelButton}
-                  disabled={isSearching}
-                >
-                  <Text style={styles.cancelText}>Clear</Text>
-                </Pressable>
-              )}
-            </View>
+        {isOffline ? (
+          <View style={styles.offlineContainer}>
+            <Text style={styles.offlineText}>
+              Discover requires an internet connection
+            </Text>
           </View>
-
-          {searchQuery.trim().length === 0 && recentSearches.length > 0 && (
-            <View style={styles.historySection}>
-              <View style={styles.historyHeader}>
-                <Text style={styles.historyTitle}>Recent Searches</Text>
-                <Pressable onPress={clearRecentSearches}>
-                  <Text style={styles.historyClearText}>Clear All</Text>
-                </Pressable>
-              </View>
-              <View style={styles.historyChipList}>
-                {recentSearches.map((item) => (
-                  <Pressable
-                    key={item}
-                    style={styles.historyChip}
-                    onPress={() => handleSearch(item)}
-                  >
-                    <Text style={styles.historyChipText}>{item}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {isSearching ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color="#2563EB" />
-              <Text style={styles.searchingText}>Searching books...</Text>
-            </View>
-          ) : hasSearched ? (
-            <>
-              <View style={styles.sectionLabelContainer}>
-                <Text style={styles.sectionLabel}>
-                  {searchError ? 'NO RESULTS' : `SEARCH RESULTS (${searchResults.length})`}
-                </Text>
-              </View>
-
-              {searchError ? (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{searchError}</Text>
-                  <TouchableOpacity 
-                    onPress={() => handleSearch(searchQuery)} 
-                    style={styles.retryButton}
-                  >
-                    <Text style={styles.retryText}>Try Again</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <FlatList
-                  data={searchResults}
-                  keyExtractor={keyExtractor}
-                  renderItem={renderItem}
-                  onEndReachedThreshold={0.5}
-                  onEndReached={loadNextPage}
-                  initialNumToRender={8}
-                  maxToRenderPerBatch={8}
-                  windowSize={7}
-                  removeClippedSubviews
-                  getItemLayout={getItemLayout}
-                  contentContainerStyle={styles.listContent}
-                  showsVerticalScrollIndicator={false}
-                  ListFooterComponent={
-                    isSearching && hasMore
-                      ? <ActivityIndicator size="small" color="#2563EB" style={styles.paginationLoader} />
-                      : null
-                  }
+        ) : (
+          <>
+            <View style={styles.searchContainer}>
+              <View style={styles.searchInputWrapper}>
+                <Search size={20} color="#6B7280" strokeWidth={2} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by title or author..."
+                  value={searchQuery}
+                  onChangeText={handleSearch}
+                  placeholderTextColor="#6B7280"
+                  editable={!isSearching}
+                  autoFocus={false}
                 />
-              )}
-            </>
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>Start searching for books</Text>
-              <Text style={styles.emptyStateSubtext}>Type at least 2 characters to search</Text>
+                {searchQuery.length > 0 && (
+                  <Pressable
+                    onPress={() => handleSearch('')}
+                    style={styles.cancelButton}
+                    disabled={isSearching}
+                  >
+                    <Text style={styles.cancelText}>Clear</Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
-          )}
-        </>
-      )}
-    </View>
+
+            {searchQuery.trim().length === 0 && recentSearches.length > 0 && (
+              <View style={styles.historySection}>
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyTitle}>Recent Searches</Text>
+                  <Pressable onPress={clearRecentSearches}>
+                    <Text style={styles.historyClearText}>Clear All</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.historyChipList}>
+                  {recentSearches.map((item) => (
+                    <Pressable
+                      key={item}
+                      style={styles.historyChip}
+                      onPress={() => handleSearch(item)}
+                    >
+                      <Text style={styles.historyChipText}>{item}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {isSearching ? (
+              <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#2563EB" />
+                <Text style={styles.searchingText}>Searching books...</Text>
+              </View>
+            ) : hasSearched ? (
+              <>
+                <View style={styles.sectionLabelContainer}>
+                  <Text style={styles.sectionLabel}>
+                    {searchError ? 'NO RESULTS' : `SEARCH RESULTS (${searchResults.length})`}
+                  </Text>
+                </View>
+
+                {searchError ? (
+                  <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{searchError}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleSearch(searchQuery)}
+                      style={styles.retryButton}
+                    >
+                      <Text style={styles.retryText}>Try Again</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={searchResults}
+                    keyExtractor={keyExtractor}
+                    renderItem={renderItem}
+                    onEndReachedThreshold={0.5}
+                    onEndReached={loadNextPage}
+                    initialNumToRender={8}
+                    maxToRenderPerBatch={8}
+                    windowSize={7}
+                    removeClippedSubviews
+                    getItemLayout={getItemLayout}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    ListFooterComponent={
+                      isSearching && hasMore
+                        ? <ActivityIndicator size="small" color="#2563EB" style={styles.paginationLoader} />
+                        : null
+                    }
+                  />
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.emptyStateText}>Start searching for books</Text>
+                <Text style={styles.emptyStateSubtext}>Type at least 2 characters to search</Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

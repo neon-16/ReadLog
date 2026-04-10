@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { BookOpen, Search, ArrowLeft, ChevronLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { ArrowLeft, BookOpen, ChevronLeft, Search } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface AppHeaderProps {
   title?: string;

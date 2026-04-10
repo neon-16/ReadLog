@@ -55,6 +55,17 @@ export default function BookDetail() {
       </View>
     );
   }
+
+  const parsedCurrentPage = parseInt(currentPage, 10);
+  const safeCurrentPage = Number.isNaN(parsedCurrentPage)
+    ? (status === 'finished' ? book.totalPages : status === 'want_to_read' ? 0 : book.currentPage)
+    : parsedCurrentPage;
+  const displayCurrentPage = status === 'finished'
+    ? book.totalPages
+    : status === 'want_to_read'
+      ? 0
+      : Math.min(Math.max(safeCurrentPage, 0), book.totalPages);
+
   return (
     <View style={styles.container}>
       <OfflineBanner />
@@ -100,14 +111,9 @@ export default function BookDetail() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Progress</Text>
-          <ProgressBar 
-            current={status === 'finished' ? book.totalPages : status === 'want_to_read' ? 0 : parseInt(currentPage)} 
-            total={book.totalPages} 
-          />
+          <ProgressBar current={displayCurrentPage} total={book.totalPages} />
           <Text style={styles.pageText}>
-            {status === 'finished' ? `Completed: ${book.totalPages} pages` : 
-             status === 'want_to_read' ? '0 pages' : 
-             `Page ${currentPage} of ${book.totalPages}`}
+            {`${displayCurrentPage} / ${book.totalPages} pages`}
           </Text>
         </View>
 

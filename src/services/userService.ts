@@ -12,6 +12,14 @@ export interface UserProfile {
   email: string;
 }
 
+export type DefaultBookStatus = 'want_to_read' | 'reading' | 'finished';
+
+function toSafeDefaultBookStatus(value: unknown): DefaultBookStatus {
+  return value === 'reading' || value === 'finished' || value === 'want_to_read'
+    ? value
+    : 'want_to_read';
+}
+
 const firestoreDb: Firestore | null = isFirebaseConfigured && app ? getFirestore(app as any) : null;
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
@@ -42,9 +50,47 @@ export async function createInitialUserProfile(
       displayName: 'User', // Default display name
       email,
     };
-    await setDoc(userDocRef, { profile, readingGoal: 24 }, { merge: true });
+    await setDoc(userDocRef, { profile, readingGoal: 24, defaultBookStatus: 'want_to_read' }, { merge: true });
   } catch (error) {
     console.error('Error creating user profile:', error);
+  }
+}
+
+export async function getUserDefaultBookStatus(uid: string): Promise<DefaultBookStatus> {
+  if (!firestoreDb) return 'want_to_read';
+
+  try {
+    const docSnap = await getDoc(doc(firestoreDb, 'users', uid));
+    if (!docSnap.exists()) {
+      return 'want_to_read';
+    }
+
+    const data = docSnap.data();
+    return toSafeDefaultBookStatus(data?.defaultBookStatus);
+  } catch (error) {
+    console.error('Error fetching default book status:', error);
+    return 'want_to_read';
+  }
+}
+
+export async function updateUserDefaultBookStatus(
+  uid: string,
+  status: DefaultBookStatus
+): Promise<void> {
+  if (!firestoreDb) return;
+
+  try {
+    const userDocRef = doc(firestoreDb, 'users', uid);
+    await setDoc(
+      userDocRef,
+      {
+        defaultBookStatus: toSafeDefaultBookStatus(status),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error updating default book status:', error);
+    throw error;
   }
 }
 

@@ -1,8 +1,8 @@
+import { useSettingsActions } from '@/src/features/settings/hooks/useSettingsActions';
 import { BookOpen, Database, Info, LogOut, Trash2 } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Button from '../../components/shared/Button';
 import { showActionSheet } from '../../utils/alert';
-import { useSettingsActions } from '@/src/features/settings/hooks/useSettingsActions';
 
 function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: string; onStatusChange: (status: string) => void }) {
   const handleSelectStatus = () => {
@@ -30,7 +30,7 @@ function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: st
 }
 
 export default function Settings() {
-  const { defaultStatus, setDefaultStatus, handleClearBooks, handleSignOut } = useSettingsActions();
+  const { defaultStatus, handleDefaultStatusChange, handleClearBooks, handleSignOut } = useSettingsActions();
 
   return (
     <View style={styles.container}>
@@ -45,7 +45,7 @@ export default function Settings() {
             <Text style={styles.sectionTitle}>READING PREFERENCES</Text>
           </View>
           <View style={styles.sectionContent}>
-            <StatusSelector selectedStatus={defaultStatus} onStatusChange={setDefaultStatus} />
+            <StatusSelector selectedStatus={defaultStatus} onStatusChange={handleDefaultStatusChange} />
           </View>
         </View>
 

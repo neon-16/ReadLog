@@ -1,12 +1,88 @@
 import { useAuth } from '@/src/features/auth/AuthContext';
-import { clearAllBooks } from '@/src/services/bookService';
+import { clearAllBooks, updateAllBooksStatus } from '@/src/services/bookService';
+import type { DefaultBookStatus } from '@/src/services/userService';
+import { getUserDefaultBookStatus, updateUserDefaultBookStatus } from '@/src/services/userService';
 import { showAlert } from '@/utils/alert';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+const LABEL_TO_DB_STATUS: Record<string, DefaultBookStatus> = {
+  Reading: 'reading',
+  'Want to Read': 'want_to_read',
+  Completed: 'finished',
+};
+
+const DB_STATUS_TO_LABEL: Record<DefaultBookStatus, string> = {
+  reading: 'Reading',
+  want_to_read: 'Want to Read',
+  finished: 'Completed',
+};
 
 export function useSettingsActions() {
-  const [defaultStatus, setDefaultStatus] = useState('Reading');
-  const { signOut } = useAuth();
+  const [defaultStatus, setDefaultStatus] = useState('Want to Read');
+  const [isUpdatingDefaultStatus, setIsUpdatingDefaultStatus] = useState(false);
+  const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDefaultStatus() {
+      if (!user?.uid) {
+        return;
+      }
+
+      const savedStatus = await getUserDefaultBookStatus(user.uid);
+      if (isMounted) {
+        setDefaultStatus(DB_STATUS_TO_LABEL[savedStatus] ?? 'Want to Read');
+      }
+    }
+
+    void loadDefaultStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid]);
+
+  const handleDefaultStatusChange = useCallback((nextStatusLabel: string) => {
+    if (isUpdatingDefaultStatus || nextStatusLabel === defaultStatus) {
+      return;
+    }
+
+    if (!user?.uid) {
+      showAlert('Error', 'You must be logged in to update settings.');
+      return;
+    }
+
+    const dbStatus = LABEL_TO_DB_STATUS[nextStatusLabel] ?? 'want_to_read';
+
+    showAlert(
+      'Apply Status to All Books',
+      `This will change every book in your library to "${nextStatusLabel}". Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Apply',
+          style: 'destructive',
+          onPress: async () => {
+            setIsUpdatingDefaultStatus(true);
+
+            try {
+              await Promise.all([
+                updateAllBooksStatus(dbStatus),
+                  updateUserDefaultBookStatus(user.uid, dbStatus),
+              ]);
+              setDefaultStatus(nextStatusLabel);
+            } catch {
+              showAlert('Error', 'Failed to update all book statuses. Please try again.');
+            } finally {
+              setIsUpdatingDefaultStatus(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [defaultStatus, isUpdatingDefaultStatus, user?.uid]);
 
   const handleClearBooks = () => {
     showAlert(
@@ -46,7 +122,8 @@ export function useSettingsActions() {
 
   return {
     defaultStatus,
-    setDefaultStatus,
+    handleDefaultStatusChange,
+    isUpdatingDefaultStatus,
     handleClearBooks,
     handleSignOut,
   };
