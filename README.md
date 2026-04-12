@@ -16,6 +16,28 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Environment setup (required)
+
+1. Create a local env file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Fill in your production Firebase values in `.env`.
+
+3. Verify required variables:
+
+   ```bash
+   npm run verify:env
+   ```
+
+Required values are:
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+
 ## Optional auth email config
 
 Spark-safe default:
@@ -86,6 +108,18 @@ Spark-friendly default:
 
 ```bash
 EXPO_PUBLIC_USE_TRANSACTIONAL_RESET=true
+```
+
+## Pre-release checklist
+
+Use `PRE_RELEASE_CHECKLIST.md` before shipping. Recommended release flow:
+
+```bash
+npm run verify:env
+npm run lint
+npm test
+npm run build:web
+firebase deploy --only hosting
 ```
 
 In the output, you'll find options to open the app in a

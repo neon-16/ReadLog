@@ -1,198 +1,29 @@
 import Button from '@/components/shared/Button';
 import Input from '@/components/shared/Input';
+import { useResetPasswordFlow } from '@/src/features/auth/hooks/useResetPasswordFlow';
 import { Link, useLocalSearchParams } from 'expo-router';
-import { confirmPasswordReset, getAuth, verifyPasswordResetCode } from 'firebase/auth';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, StyleSheet, Text, View } from 'react-native';
-
-const auth = getAuth();
-
-function readQueryParam(value: unknown): string {
-  if (Array.isArray(value)) {
-    return String(value[0] || '');
-  }
-  return String(value || '');
-}
-
-function parseResetParams(params: Record<string, unknown>) {
-  const directOobCode =
-    readQueryParam(params.oobCode).trim() ||
-    readQueryParam(params.oobcode).trim() ||
-    readQueryParam(params.code).trim();
-
-  const directMode = readQueryParam(params.mode).trim();
-  if (directOobCode) {
-    return {
-      oobCode: directOobCode,
-      mode: directMode,
-    };
-  }
-
-  const nestedLink =
-    readQueryParam(params.continueUrl).trim() ||
-    readQueryParam(params.link).trim() ||
-    readQueryParam(params.deep_link_id).trim();
-
-  if (!nestedLink) {
-    return {
-      oobCode: '',
-      mode: directMode,
-    };
-  }
-
-  try {
-    const nestedUrl = new URL(nestedLink);
-    return {
-      oobCode:
-        nestedUrl.searchParams.get('oobCode') ||
-        nestedUrl.searchParams.get('oobcode') ||
-        nestedUrl.searchParams.get('code') ||
-        '',
-      mode: nestedUrl.searchParams.get('mode') || directMode,
-    };
-  } catch {
-    return {
-      oobCode: '',
-      mode: directMode,
-    };
-  }
-}
-
-function getCopyableResetLink(params: Record<string, unknown>, oobCode: string) {
-  const nestedLink =
-    readQueryParam(params.continueUrl).trim() ||
-    readQueryParam(params.link).trim() ||
-    readQueryParam(params.deep_link_id).trim();
-
-  if (nestedLink) {
-    return nestedLink;
-  }
-
-  if (!oobCode) {
-    return '';
-  }
-
-  const authDomain = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
-  if (!authDomain) {
-    return `mode=resetPassword&oobCode=${encodeURIComponent(oobCode)}`;
-  }
-
-  return `https://${authDomain}/__/auth/action?mode=resetPassword&oobCode=${encodeURIComponent(oobCode)}`;
-}
-
-function getReadableResetError(message: string): string {
-  if (message.includes('auth/invalid-action-code')) return 'This reset link is invalid or already used.';
-  if (message.includes('auth/expired-action-code')) return 'This reset link has expired. Request a new one.';
-  if (message.includes('auth/weak-password')) return 'Password must be at least 6 characters.';
-  if (message.includes('auth/network-request-failed')) return 'Network error. Please try again.';
-  return 'Unable to reset password. Please request a new link.';
-}
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams();
-  const { oobCode, mode } = useMemo(
-    () => parseResetParams(params),
-    [params]
-  );
-  const copyableResetLink = useMemo(
-    () => getCopyableResetLink(params, oobCode),
-    [oobCode, params]
-  );
-
-  const [email, setEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [verifying, setVerifying] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [linkError, setLinkError] = useState('');
-  const [formError, setFormError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [linkMessage, setLinkMessage] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const verifyLink = async () => {
-      // Some providers omit mode on custom links, but oobCode is sufficient for Firebase verification.
-      if (!oobCode || (mode && mode !== 'resetPassword')) {
-        setLinkError('This password reset link is incomplete. Please request a new reset email.');
-        setVerifying(false);
-        return;
-      }
-
-      try {
-        const recoveredEmail = await verifyPasswordResetCode(auth, oobCode);
-        if (!cancelled) {
-          setEmail(recoveredEmail || '');
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setLinkError(getReadableResetError(String(error)));
-        }
-      } finally {
-        if (!cancelled) {
-          setVerifying(false);
-        }
-      }
-    };
-
-    verifyLink();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, oobCode]);
-
-  const passwordError = useMemo(() => {
-    if (!newPassword) return '';
-    return newPassword.length >= 6 ? '' : 'Password must be at least 6 characters.';
-  }, [newPassword]);
-
-  const confirmError = useMemo(() => {
-    if (!confirmPassword) return '';
-    return confirmPassword === newPassword ? '' : 'Passwords do not match.';
-  }, [confirmPassword, newPassword]);
-
-  const handleReset = async () => {
-    setFormError('');
-
-    if (!oobCode) {
-      setFormError('Reset code is missing. Please request a new reset email.');
-      return;
-    }
-
-    if (!newPassword || !confirmPassword) {
-      setFormError('Please fill in all fields.');
-      return;
-    }
-
-    if (passwordError || confirmError) {
-      setFormError('Please fix the input errors.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await confirmPasswordReset(auth, oobCode, newPassword);
-      setSuccess(true);
-    } catch (error) {
-      setFormError(getReadableResetError(String(error)));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleOpenResetLink = async () => {
-    if (!copyableResetLink) return;
-
-    const canOpen = await Linking.canOpenURL(copyableResetLink);
-    if (!canOpen) {
-      setLinkMessage('Unable to open link.');
-      return;
-    }
-
-    await Linking.openURL(copyableResetLink);
-  };
+  const {
+    email,
+    newPassword,
+    setNewPassword,
+    confirmPassword,
+    setConfirmPassword,
+    verifying,
+    submitting,
+    linkError,
+    formError,
+    success,
+    linkMessage,
+    copyableResetLink,
+    passwordError,
+    confirmError,
+    handleReset,
+    handleOpenResetLink,
+  } = useResetPasswordFlow(params);
 
   if (verifying) {
     return (

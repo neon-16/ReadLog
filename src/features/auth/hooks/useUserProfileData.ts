@@ -68,8 +68,7 @@ export function useUserProfileData(user: User | null, options: UseUserProfileDat
         setProfile(normalizedProfile);
         profileCache.set(user.uid, { profile: normalizedProfile, timestamp: Date.now() });
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
+    } catch {
       if (requestId === requestIdRef.current) {
         setProfile(null);
       }

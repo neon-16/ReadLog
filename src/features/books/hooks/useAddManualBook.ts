@@ -11,19 +11,25 @@ type ManualBookDraft = {
 };
 
 function validateDraft(draft: ManualBookDraft): string | null {
+  const trimmedPages = draft.totalPages.trim();
+
   if (!draft.title.trim()) {
     return 'Please enter a book title.';
   }
   if (!draft.author.trim()) {
     return 'Please enter an author name.';
   }
-  if (!draft.totalPages.trim()) {
+  if (!trimmedPages) {
     return 'Please enter total pages.';
   }
 
-  const pages = parseInt(draft.totalPages, 10);
-  if (Number.isNaN(pages) || pages < 0) {
-    return 'Please enter a valid number for total pages.';
+  if (!/^\d+$/.test(trimmedPages)) {
+    return 'Total pages must contain numbers only.';
+  }
+
+  const pages = Number(trimmedPages);
+  if (!Number.isInteger(pages) || pages <= 0) {
+    return 'Please enter a valid number greater than 0 for total pages.';
   }
 
   return null;
@@ -36,6 +42,10 @@ export function useAddManualBook(user: User | null) {
   const [status, setStatus] = useState('Reading');
   const [genre, setGenre] = useState('Fiction');
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleTotalPagesChange = useCallback((value: string) => {
+    setTotalPages(value.replace(/\D/g, ''));
+  }, []);
 
   const handleAddBook = useCallback(async () => {
     const validationError = validateDraft({ title, author, totalPages });
@@ -51,7 +61,7 @@ export function useAddManualBook(user: User | null) {
 
     setIsSaving(true);
     try {
-      const pages = parseInt(totalPages, 10);
+      const pages = Number(totalPages.trim());
       const dbGenre = genre.toLowerCase();
 
       await addBook({
@@ -67,7 +77,6 @@ export function useAddManualBook(user: User | null) {
         params: { bookTitle: title },
       });
     } catch (error) {
-      console.error('Error adding book:', error);
       showAlert('Error', error instanceof Error ? error.message : 'Failed to add book');
     } finally {
       setIsSaving(false);
@@ -80,7 +89,7 @@ export function useAddManualBook(user: User | null) {
     author,
     setAuthor,
     totalPages,
-    setTotalPages,
+    handleTotalPagesChange,
     status,
     setStatus,
     genre,

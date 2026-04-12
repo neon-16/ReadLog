@@ -67,7 +67,23 @@ async function fetchWithTimeout(url, timeoutMs = REQUEST_TIMEOUT_MS) {
 /**
  * Search books from Open Library API
  * @param {string} query - Search query (title or author)
- * @returns {Promise<Array>} Array of book objects
+ * @param {{ page?: number; pageSize?: number }} options
+ * @returns {Promise<{
+ *   books: Array<{
+ *     title: string;
+ *     author: string;
+ *     genre: string;
+ *     source: string;
+ *     externalId?: string;
+ *     year?: number;
+ *     coverId?: number;
+ *     coverUrl?: string | null;
+ *     isbn?: string;
+ *     totalPages?: number;
+ *   }>;
+ *   page: number;
+ *   hasMore: boolean;
+ * }>}
  */
 export async function searchOnlineBooks(query, { page = 1, pageSize = 15 } = {}) {
   if (!query || query.trim().length === 0) {

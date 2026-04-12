@@ -16,8 +16,6 @@ export function showAlert(
 ) {
   // Use direct browser detection instead of Platform.OS
   if (isWeb) {
-    console.log('showAlert called:', title, message);
-    
     // Web-compatible implementation
     const buttonTexts = buttons.map(b => b.text).join(' / ');
     const userChoice = window.confirm(`${title}\n\n${message}\n\n[${buttonTexts}]`);
@@ -48,8 +46,6 @@ export function showActionSheet(
 ) {
   // Use direct browser detection instead of Platform.OS
   if (isWeb) {
-    console.log('showActionSheet called:', title, message);
-    
     // Create text representation of all options
     const actionOptions = options.filter(opt => opt.style !== 'cancel');
     const optionsList = actionOptions
@@ -60,7 +56,7 @@ export function showActionSheet(
     const userInput = window.prompt(prompt);
     
     if (userInput && userInput.trim()) {
-      const choiceIndex = parseInt(userInput) - 1;
+      const choiceIndex = parseInt(userInput, 10) - 1;
       const selectedOption = actionOptions[choiceIndex];
       
       if (selectedOption?.onPress) {

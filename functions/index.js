@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { logger } = require("firebase-functions");
 const { defineSecret } = require("firebase-functions/params");
 
 admin.initializeApp();
@@ -205,7 +206,7 @@ exports.sendPasswordResetEmailTransactional = onCall(
 
       return { ok: true };
     } catch (error) {
-      console.error("sendPasswordResetEmailTransactional failed", error);
+      logger.error("sendPasswordResetEmailTransactional failed", error);
       throw new HttpsError("internal", "Unable to send reset email.");
     }
   }

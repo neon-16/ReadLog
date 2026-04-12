@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { memo, useCallback } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { showAlert } from '../utils/alert';
 
@@ -46,8 +47,12 @@ const onlineBooks = [
   },
 ];
 
+const ROW_HEIGHT = 116;
+
+type OnlineBook = typeof onlineBooks[number];
+
 // Book Item Component
-function BookItem({ book }: { book: typeof onlineBooks[0] }) {
+const BookItem = memo(function BookItem({ book }: { book: OnlineBook }) {
   const handleAddBook = () => {
     showAlert('Book Added', 'Book added to your library.', [
       {
@@ -78,9 +83,21 @@ function BookItem({ book }: { book: typeof onlineBooks[0] }) {
       </Pressable>
     </View>
   );
-}
+});
 
 export default function AddOnline() {
+  const keyExtractor = useCallback((item: OnlineBook) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: OnlineBook }) => (
+    <BookItem book={item} />
+  ), []);
+
+  const getItemLayout = useCallback((_: ArrayLike<OnlineBook> | null | undefined, index: number) => ({
+    length: ROW_HEIGHT,
+    offset: ROW_HEIGHT * index,
+    index,
+  }), []);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -94,10 +111,15 @@ export default function AddOnline() {
       {/* Books List */}
       <FlatList
         data={onlineBooks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BookItem book={item} />}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews
       />
     </View>
   );

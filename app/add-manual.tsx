@@ -1,13 +1,13 @@
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { useAddManualBook } from '@/src/features/books/hooks/useAddManualBook';
 import { router } from 'expo-router';
 import { Info, Save } from 'lucide-react-native';
-import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AppHeader from '../components/shared/AppHeader';
 import Button from '../components/shared/Button';
 import GenreSelector from '../components/shared/GenreSelector';
 import Input from '../components/shared/Input';
 import StatusSelector from '../components/shared/StatusSelector';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { useAddManualBook } from '@/src/features/books/hooks/useAddManualBook';
 
 export default function AddManual() {
   const { user } = useAuth();
@@ -17,7 +17,7 @@ export default function AddManual() {
     author,
     setAuthor,
     totalPages,
-    setTotalPages,
+    handleTotalPagesChange,
     status,
     setStatus,
     genre,
@@ -39,7 +39,7 @@ export default function AddManual() {
 
           <View style={styles.rowGroup}>
             <View style={styles.pagesInput}>
-              <Input label="Total Pages" placeholder="0" value={totalPages} onChangeText={setTotalPages} keyboardType="number-pad" />
+              <Input label="Total Pages" placeholder="0" value={totalPages} onChangeText={handleTotalPagesChange} keyboardType="number-pad" />
             </View>
             <View style={styles.statusInput}>
               <StatusSelector selectedStatus={status} onStatusChange={setStatus} />

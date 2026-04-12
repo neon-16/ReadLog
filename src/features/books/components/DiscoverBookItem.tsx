@@ -2,6 +2,7 @@ import BookCover from '@/components/shared/BookCover';
 import { showAlert } from '@/utils/alert';
 import { memo, useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import type { DiscoverStyles } from './discoverStyles';
 
 type DiscoverBook = {
   title: string;
@@ -17,7 +18,7 @@ type DiscoverBook = {
 type DiscoverBookItemProps = {
   book: DiscoverBook;
   onAdd: (book: DiscoverBook) => Promise<void>;
-  styles: any;
+  styles: DiscoverStyles;
 };
 
 const DiscoverBookItem = memo(function DiscoverBookItem({ book, onAdd, styles }: DiscoverBookItemProps) {

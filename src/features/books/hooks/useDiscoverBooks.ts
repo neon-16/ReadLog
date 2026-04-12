@@ -33,6 +33,25 @@ type CacheEntry = {
   timestamp: number;
 };
 
+function mapSearchErrorToUserMessage(error: unknown): string {
+  const rawMessage = error instanceof Error ? error.message : 'Search failed';
+  const normalizedMessage = rawMessage.toLowerCase();
+
+  if (normalizedMessage.includes('timed out') || normalizedMessage.includes('timeout')) {
+    return 'The search took too long. Please try again.';
+  }
+
+  if (normalizedMessage.includes('api error') || normalizedMessage.includes('invalid') || normalizedMessage.includes('json')) {
+    return 'Book search is temporarily unavailable. Please try again soon.';
+  }
+
+  if (normalizedMessage.includes('network') || normalizedMessage.includes('internet') || normalizedMessage.includes('failed to fetch')) {
+    return 'Could not connect right now. Please check your internet and try again.';
+  }
+
+  return 'We could not load books right now. Please try again.';
+}
+
 export function useDiscoverBooks(user: User | null) {
   const { isOffline } = useNetworkStatus();
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,8 +189,7 @@ export function useDiscoverBooks(user: User | null) {
       if (requestId !== activeRequestIdRef.current) {
         return;
       }
-      const message = error instanceof Error ? error.message : 'Search failed';
-      setSearchError(message);
+      setSearchError(mapSearchErrorToUserMessage(error));
       if (page === 1) {
         setSearchResults([]);
       }
@@ -247,6 +265,7 @@ export function useDiscoverBooks(user: User | null) {
       totalPages: book?.totalPages || 300,
       genre: book?.genre || 'other',
       source: 'online',
+      status: 'want_to_read',
     });
   }, [user]);
 

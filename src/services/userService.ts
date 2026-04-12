@@ -32,8 +32,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
       return data?.profile || null;
     }
     return null;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
+  } catch {
     return null;
   }
 }
@@ -51,8 +50,8 @@ export async function createInitialUserProfile(
       email,
     };
     await setDoc(userDocRef, { profile, readingGoal: 24, defaultBookStatus: 'want_to_read' }, { merge: true });
-  } catch (error) {
-    console.error('Error creating user profile:', error);
+  } catch {
+    // Keep this non-blocking for first-run onboarding.
   }
 }
 
@@ -67,8 +66,7 @@ export async function getUserDefaultBookStatus(uid: string): Promise<DefaultBook
 
     const data = docSnap.data();
     return toSafeDefaultBookStatus(data?.defaultBookStatus);
-  } catch (error) {
-    console.error('Error fetching default book status:', error);
+  } catch {
     return 'want_to_read';
   }
 }
@@ -89,7 +87,6 @@ export async function updateUserDefaultBookStatus(
       { merge: true }
     );
   } catch (error) {
-    console.error('Error updating default book status:', error);
     throw error;
   }
 }
@@ -112,7 +109,6 @@ export async function updateUserDisplayName(
       { merge: true }
     );
   } catch (error) {
-    console.error('Error updating display name:', error);
     throw error;
   }
 }

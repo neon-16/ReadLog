@@ -10,7 +10,6 @@ function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: st
       'Default Book Status',
       'Choose the default status for new books:',
       [
-        { text: 'Reading', onPress: () => onStatusChange('Reading') },
         { text: 'Want to Read', onPress: () => onStatusChange('Want to Read') },
         { text: 'Completed', onPress: () => onStatusChange('Completed') },
         { text: 'Cancel', style: 'cancel' },
@@ -30,7 +29,14 @@ function StatusSelector({ selectedStatus, onStatusChange }: { selectedStatus: st
 }
 
 export default function Settings() {
-  const { defaultStatus, handleDefaultStatusChange, handleClearBooks, handleSignOut } = useSettingsActions();
+  const {
+    defaultStatus,
+    handleDefaultStatusChange,
+    isCheckingFirestoreConnection,
+    handleClearBooks,
+    handleFirestoreConnectionCheck,
+    handleSignOut,
+  } = useSettingsActions();
 
   return (
     <View style={styles.container}>
@@ -55,6 +61,16 @@ export default function Settings() {
             <Text style={styles.sectionTitle}>DATA</Text>
           </View>
           <View style={styles.sectionContent}>
+            <Button
+              variant="secondary"
+              onPress={handleFirestoreConnectionCheck}
+              disabled={isCheckingFirestoreConnection}
+              icon={<Database size={18} color="#2563EB" />}
+              style={styles.checkButton}
+            >
+              {isCheckingFirestoreConnection ? 'Checking Firestore...' : 'Run Firestore Connection Check'}
+            </Button>
+
             <View style={styles.warningBox}>
               <Text style={styles.warningText}>
                 Clearing all books will permanently delete your reading history. This action cannot be undone.
@@ -175,6 +191,9 @@ const styles = StyleSheet.create({
     borderColor: '#FCA5A5',
     borderRadius: 8,
     padding: 12,
+    marginBottom: 12,
+  },
+  checkButton: {
     marginBottom: 12,
   },
   warningText: {

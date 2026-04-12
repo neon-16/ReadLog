@@ -9,21 +9,48 @@ import {
 import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
 
+function readPublicEnv(name) {
+  const publicEnv = {
+    EXPO_PUBLIC_FIREBASE_API_KEY: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+    EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    EXPO_PUBLIC_FIREBASE_PROJECT_ID: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+    EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    EXPO_PUBLIC_FIREBASE_APP_ID: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+    EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION: process.env.EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION,
+  };
+  const value = publicEnv[name];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isPlaceholder(value) {
+  const normalized = value.toLowerCase();
+  return normalized.includes('your_') || normalized.includes('replace_me') || normalized.includes('changeme');
+}
+
+function hasRealValue(value) {
+  return value.length > 0 && !isPlaceholder(value);
+}
+
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey: readPublicEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: readPublicEnv('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: readPublicEnv('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: readPublicEnv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: readPublicEnv('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: readPublicEnv('EXPO_PUBLIC_FIREBASE_APP_ID'),
 };
 
 const requiredConfigKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
 
-export const isFirebaseConfigured = requiredConfigKeys.every((key) => !!firebaseConfig[key]);
+const missingConfigKeys = requiredConfigKeys.filter((key) => !hasRealValue(firebaseConfig[key] || ''));
+
+export const isFirebaseConfigured = missingConfigKeys.length === 0;
 
 if (!isFirebaseConfigured) {
-  throw new Error('Firebase is not configured. Add EXPO_PUBLIC_FIREBASE_* values in .env.');
+  throw new Error(
+    `Firebase is not configured. Missing/invalid: ${missingConfigKeys.join(', ')}. Add EXPO_PUBLIC_FIREBASE_* values in .env.`
+  );
 }
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -50,7 +77,7 @@ if (Platform.OS === 'web') {
   }
 }
 
-const functionsRegion = process.env.EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1';
+const functionsRegion = readPublicEnv('EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION') || 'us-central1';
 const functions = getFunctions(app, functionsRegion);
 
 export { app, auth, db, functions };

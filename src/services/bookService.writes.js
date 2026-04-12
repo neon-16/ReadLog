@@ -22,6 +22,24 @@ function toSafeBookStatus(value) {
   return ['want_to_read', 'reading', 'finished'].includes(value) ? value : 'want_to_read';
 }
 
+function getBulkStatusUpdateFields(book, status) {
+  const totalPages = Math.max(0, Number(book?.totalPages) || 0);
+
+  if (status === 'finished') {
+    return {
+      status: 'finished',
+      currentPage: totalPages,
+      progress: 100,
+    };
+  }
+
+  return {
+    status: 'want_to_read',
+    currentPage: 0,
+    progress: 0,
+  };
+}
+
 export async function addBook({ title, author, totalPages, genre, source, status }) {
   try {
     const userId = getAuthenticatedUserId();
@@ -151,9 +169,7 @@ export async function updateAllBooksStatus(newStatus) {
   try {
     const booksRef = getUserBooksRef();
     const snapshot = await getDocs(booksRef);
-    const safeStatus = ['want_to_read', 'reading', 'finished'].includes(newStatus)
-      ? newStatus
-      : 'want_to_read';
+    const safeStatus = newStatus === 'finished' ? 'finished' : 'want_to_read';
 
     if (snapshot.empty) {
       return { success: true, updatedCount: 0, status: safeStatus };
@@ -165,17 +181,12 @@ export async function updateAllBooksStatus(newStatus) {
 
     for (const snapshotDoc of snapshot.docs) {
       const book = Book.fromFirestore(snapshotDoc);
-      const updatedBook = new Book({
-        ...book.toFirestore(),
-        id: snapshotDoc.id,
-        status: safeStatus,
-        createdAt: book.createdAt,
-      });
+      const fields = getBulkStatusUpdateFields(book, safeStatus);
 
       batch.update(snapshotDoc.ref, {
-        status: updatedBook.status,
-        currentPage: updatedBook.currentPage,
-        progress: updatedBook.progress,
+        status: fields.status,
+        currentPage: fields.currentPage,
+        progress: fields.progress,
       });
 
       operationCount += 1;
