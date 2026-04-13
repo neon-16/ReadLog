@@ -1,6 +1,5 @@
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { clearAllBooks, updateAllBooksStatus } from '@/src/services/bookService';
-import { runFirestoreConnectionCheck } from '@/src/services/firestoreConnectionCheck';
 import type { DefaultBookStatus } from '@/src/services/userService';
 import { getUserDefaultBookStatus, updateUserDefaultBookStatus } from '@/src/services/userService';
 import { showAlert } from '@/utils/alert';
@@ -21,7 +20,6 @@ const DB_STATUS_TO_LABEL: Record<DefaultBookStatus, string> = {
 export function useSettingsActions() {
   const [defaultStatus, setDefaultStatus] = useState('Want to Read');
   const [isUpdatingDefaultStatus, setIsUpdatingDefaultStatus] = useState(false);
-  const [isCheckingFirestoreConnection, setIsCheckingFirestoreConnection] = useState(false);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -121,38 +119,11 @@ export function useSettingsActions() {
     ]);
   };
 
-  const handleFirestoreConnectionCheck = useCallback(async () => {
-    if (isCheckingFirestoreConnection) {
-      return;
-    }
-
-    if (!user?.uid) {
-      showAlert('Not Logged In', 'Please sign in before running Firestore check.');
-      return;
-    }
-
-    setIsCheckingFirestoreConnection(true);
-    try {
-      const result = await runFirestoreConnectionCheck(user.uid);
-      showAlert(
-        'Firestore Connected',
-        `Write and read succeeded. New test book id: ${result.newBookId}. Fetched ${result.books.length} books.`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Firestore error';
-      showAlert('Firestore Check Failed', message);
-    } finally {
-      setIsCheckingFirestoreConnection(false);
-    }
-  }, [isCheckingFirestoreConnection, user?.uid]);
-
   return {
     defaultStatus,
     handleDefaultStatusChange,
     isUpdatingDefaultStatus,
-    isCheckingFirestoreConnection,
     handleClearBooks,
-    handleFirestoreConnectionCheck,
     handleSignOut,
   };
 }

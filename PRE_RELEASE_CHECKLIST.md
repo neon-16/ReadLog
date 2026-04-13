@@ -2,10 +2,13 @@
 
 Use this checklist before each production release.
 
+If development works but production fails, run `PRODUCTION_DEBUG_RUNBOOK.md` before shipping.
+
 ## 1. Environment and Config
 
 - [ ] Copy `.env.example` to `.env` and fill all required values.
 - [ ] Run `npm run verify:env` and confirm it passes.
+- [ ] Run `npm run verify:env:strict` before preview/production EAS builds.
 - [ ] Confirm `EXPO_PUBLIC_FIREBASE_PROJECT_ID` points to the production Firebase project.
 - [ ] Confirm `EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION` matches deployed Cloud Functions.
 - [ ] Keep `EXPO_PUBLIC_USE_CUSTOM_RESET_URL=false` unless a verified reset URL is ready.

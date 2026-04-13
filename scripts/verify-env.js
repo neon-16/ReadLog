@@ -1,10 +1,58 @@
-require('dotenv/config');
+const fs = require('node:fs');
+const path = require('node:path');
+
+function loadDotEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const lines = raw.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const equalsIndex = trimmed.indexOf('=');
+    if (equalsIndex <= 0) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, equalsIndex).trim();
+    let value = trimmed.slice(equalsIndex + 1).trim();
+
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+}
+
+function loadLocalEnvFiles() {
+  const cwd = process.cwd();
+  loadDotEnvFile(path.join(cwd, '.env'));
+  loadDotEnvFile(path.join(cwd, '.env.local'));
+}
+
+loadLocalEnvFiles();
+
+const strictMode = process.argv.includes('--strict');
 
 const requiredVars = [
   'EXPO_PUBLIC_FIREBASE_API_KEY',
   'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
   'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
   'EXPO_PUBLIC_FIREBASE_APP_ID',
+];
+
+const strictOnlyRequiredVars = [
+  'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
 ];
 
 const recommendedVars = [
@@ -61,19 +109,26 @@ function printList(title, items) {
 }
 
 function main() {
-  const required = checkVars(requiredVars, { required: true });
+  const activeRequiredVars = strictMode
+    ? [...requiredVars, ...strictOnlyRequiredVars]
+    : requiredVars;
+
+  const required = checkVars(activeRequiredVars, { required: true });
   const recommended = checkVars(recommendedVars, { required: false });
 
   const hasErrors = required.missing.length > 0 || required.placeholders.length > 0;
 
   if (hasErrors) {
     console.error('Environment validation failed.');
+    if (strictMode) {
+      console.error('Strict mode is enabled.');
+    }
     printList('Missing required variables:', required.missing);
     printList('Required variables with placeholder values:', required.placeholders);
     process.exit(1);
   }
 
-  console.log('Environment validation passed for required variables.');
+  console.log(`Environment validation passed for required variables${strictMode ? ' (strict mode)' : ''}.`);
   printList('Recommended variables with placeholder values:', recommended.placeholders);
 
   if (recommended.placeholders.length > 0) {

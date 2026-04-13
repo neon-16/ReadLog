@@ -32,9 +32,7 @@ export default function Settings() {
   const {
     defaultStatus,
     handleDefaultStatusChange,
-    isCheckingFirestoreConnection,
     handleClearBooks,
-    handleFirestoreConnectionCheck,
     handleSignOut,
   } = useSettingsActions();
 
@@ -61,16 +59,6 @@ export default function Settings() {
             <Text style={styles.sectionTitle}>DATA</Text>
           </View>
           <View style={styles.sectionContent}>
-            <Button
-              variant="secondary"
-              onPress={handleFirestoreConnectionCheck}
-              disabled={isCheckingFirestoreConnection}
-              icon={<Database size={18} color="#2563EB" />}
-              style={styles.checkButton}
-            >
-              {isCheckingFirestoreConnection ? 'Checking Firestore...' : 'Run Firestore Connection Check'}
-            </Button>
-
             <View style={styles.warningBox}>
               <Text style={styles.warningText}>
                 Clearing all books will permanently delete your reading history. This action cannot be undone.
@@ -191,9 +179,6 @@ const styles = StyleSheet.create({
     borderColor: '#FCA5A5',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
-  },
-  checkButton: {
     marginBottom: 12,
   },
   warningText: {

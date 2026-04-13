@@ -5,6 +5,20 @@
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org/search.json';
 const REQUEST_TIMEOUT_MS = 10000;
+const DISCOVER_RANDOM_QUERIES = [
+  'fiction',
+  'fantasy',
+  'mystery',
+  'history',
+  'science',
+  'self help',
+  'biography',
+  'classic',
+  'adventure',
+  'psychology',
+  'technology',
+  'philosophy',
+];
 
 /**
  * Maps Open Library genres/subjects to app genres
@@ -139,4 +153,39 @@ export async function searchOnlineBooks(query, { page = 1, pageSize = 15 } = {})
         : 'Failed to search books. Please check your internet connection.'
     );
   }
+}
+
+function shuffle(items) {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+function pickRandomQueries(count = 2) {
+  return shuffle(DISCOVER_RANDOM_QUERIES).slice(0, Math.max(1, count));
+}
+
+export async function getDiscoverRandomPicks({ pageSize = 10 } = {}) {
+  const querySeeds = pickRandomQueries(2);
+  const responses = await Promise.all(
+    querySeeds.map((seed) => searchOnlineBooks(seed, { page: 1, pageSize }))
+  );
+
+  const uniqueByExternalId = new Map();
+  for (const response of responses) {
+    for (const book of response.books) {
+      const key = String(book.externalId || '').trim();
+      if (!key) {
+        continue;
+      }
+      if (!uniqueByExternalId.has(key)) {
+        uniqueByExternalId.set(key, book);
+      }
+    }
+  }
+
+  return shuffle(Array.from(uniqueByExternalId.values())).slice(0, pageSize);
 }

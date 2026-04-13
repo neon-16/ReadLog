@@ -88,7 +88,7 @@ export function useStatsData(user: User | null) {
 
     setSavingProfile(true);
     try {
-      await updateUserDisplayName(user.uid, normalizedDisplayName);
+      await updateUserDisplayName(user.uid, normalizedDisplayName, user.email || '');
       updateProfileLocally({
         displayName: normalizedDisplayName,
         email: profile?.email || user.email || '',

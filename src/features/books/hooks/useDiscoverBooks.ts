@@ -1,5 +1,5 @@
 import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
-import { searchOnlineBooks } from '@/src/services/bookSearchService';
+import { getDiscoverRandomPicks, searchOnlineBooks } from '@/src/services/bookSearchService';
 import { addBook } from '@/src/services/bookService';
 import { showAlert } from '@/utils/alert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const DEBOUNCE_DELAY = 500;
 const MIN_SEARCH_LENGTH = 2;
 const SEARCH_PAGE_SIZE = 15;
+const DISCOVER_SUGGESTIONS_SIZE = 10;
 const CACHE_TTL_MS = 60 * 1000;
 const MAX_RECENT_SEARCHES = 6;
 
@@ -60,6 +61,9 @@ export function useDiscoverBooks(user: User | null) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [discoverSuggestions, setDiscoverSuggestions] = useState<SearchResultItem[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,6 +132,26 @@ export function useDiscoverBooks(user: User | null) {
     setRecentSearches([]);
     void AsyncStorage.removeItem(getSearchHistoryKey(user?.uid));
   }, [user?.uid]);
+
+  const loadDiscoverSuggestions = useCallback(async () => {
+    if (isOffline) {
+      setSuggestionsError('Discover requires an internet connection');
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    setSuggestionsError(null);
+
+    try {
+      const picks = await getDiscoverRandomPicks({ pageSize: DISCOVER_SUGGESTIONS_SIZE });
+      setDiscoverSuggestions(picks);
+    } catch (error) {
+      setSuggestionsError(mapSearchErrorToUserMessage(error));
+      setDiscoverSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [isOffline]);
 
   const performSearch = useCallback(async (query: string, page = 1) => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -244,6 +268,7 @@ export function useDiscoverBooks(user: User | null) {
 
   useEffect(() => {
     loadRecentSearches();
+    void loadDiscoverSuggestions();
 
     return () => {
       activeRequestIdRef.current += 1;
@@ -251,7 +276,7 @@ export function useDiscoverBooks(user: User | null) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [loadRecentSearches]);
+  }, [loadDiscoverSuggestions, loadRecentSearches]);
 
   const handleAddBook = useCallback(async (book: SearchResultItem) => {
     if (!user) {
@@ -277,9 +302,13 @@ export function useDiscoverBooks(user: User | null) {
     searchError,
     hasSearched,
     recentSearches,
+    discoverSuggestions,
+    isLoadingSuggestions,
+    suggestionsError,
     hasMore,
     handleSearch,
     clearRecentSearches,
+    loadDiscoverSuggestions,
     resetDiscoverState,
     loadNextPage,
     handleAddBook,

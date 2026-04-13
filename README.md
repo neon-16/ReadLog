@@ -32,6 +32,13 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm run verify:env
    ```
 
+For EAS cloud builds, release-like profiles (`preview`, `production`) now run a strict env gate automatically via `eas-build-pre-install`.
+You can run the same stricter check locally with:
+
+```bash
+npm run verify:env:strict
+```
+
 Required values are:
 - `EXPO_PUBLIC_FIREBASE_API_KEY`
 - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -121,6 +128,8 @@ npm test
 npm run build:web
 firebase deploy --only hosting
 ```
+
+If a production build fails while development works, follow `PRODUCTION_DEBUG_RUNBOOK.md`.
 
 In the output, you'll find options to open the app in a
 

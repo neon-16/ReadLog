@@ -2,11 +2,11 @@ import OfflineBanner from '@/src/core/components/OfflineBanner';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import DiscoverBookItem, { type DiscoverBook } from '@/src/features/books/components/DiscoverBookItem';
 import {
-  DiscoverEmptyState,
-  DiscoverErrorState,
-  DiscoverLoadingState,
-  DiscoverRecentSearches,
-  DiscoverSearchBar,
+    DiscoverEmptyState,
+    DiscoverErrorState,
+    DiscoverLoadingState,
+    DiscoverRecentSearches,
+    DiscoverSearchBar,
 } from '@/src/features/books/components/DiscoverScreenSections';
 import { discoverStyles as styles } from '@/src/features/books/components/discoverStyles';
 import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
@@ -27,9 +27,13 @@ export default function Discover() {
     searchError,
     hasSearched,
     recentSearches,
+    discoverSuggestions,
+    isLoadingSuggestions,
+    suggestionsError,
     hasMore,
     handleSearch,
     clearRecentSearches,
+    loadDiscoverSuggestions,
     resetDiscoverState,
     loadNextPage,
     handleAddBook,
@@ -91,9 +95,41 @@ export default function Discover() {
             />
           )}
 
-          {isSearching ? (
+          {searchQuery.trim().length === 0 && (
+            <>
+              <View style={styles.sectionLabelContainer}>
+                <Text style={styles.sectionLabel}>
+                  {suggestionsError ? 'SUGGESTIONS UNAVAILABLE' : 'RANDOM PICKS FOR YOU'}
+                </Text>
+              </View>
+
+              {isLoadingSuggestions ? (
+                <DiscoverLoadingState message="Loading random books..." />
+              ) : suggestionsError ? (
+                <DiscoverErrorState message={suggestionsError} onRetry={loadDiscoverSuggestions} />
+              ) : (
+                <FlatList
+                  data={discoverSuggestions}
+                  keyExtractor={keyExtractor}
+                  renderItem={renderItem}
+                  initialNumToRender={8}
+                  maxToRenderPerBatch={8}
+                  updateCellsBatchingPeriod={50}
+                  windowSize={7}
+                  removeClippedSubviews
+                  getItemLayout={getItemLayout}
+                  contentContainerStyle={styles.listContent}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  ListEmptyComponent={<DiscoverEmptyState />}
+                />
+              )}
+            </>
+          )}
+
+          {searchQuery.trim().length > 0 && isSearching ? (
             <DiscoverLoadingState message="Searching books..." />
-          ) : hasSearched ? (
+          ) : searchQuery.trim().length > 0 && hasSearched ? (
             <>
               <View style={styles.sectionLabelContainer}>
                 <Text style={styles.sectionLabel}>
@@ -127,9 +163,7 @@ export default function Discover() {
                 />
               )}
             </>
-          ) : (
-            <DiscoverEmptyState />
-          )}
+          ) : null}
         </>
       )}
     </View>

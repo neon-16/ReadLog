@@ -93,17 +93,32 @@ export async function updateUserDefaultBookStatus(
 
 export async function updateUserDisplayName(
   uid: string,
-  displayName: string
+  displayName: string,
+  fallbackEmail = ''
 ): Promise<void> {
   if (!firestoreDb) return;
 
   try {
     const userDocRef = doc(firestoreDb, 'users', uid);
+    const existingSnap = await getDoc(userDocRef);
+    const existingData = existingSnap.exists() ? existingSnap.data() : null;
+    const existingProfile = (existingData?.profile ?? {}) as Partial<UserProfile>;
+
+    const normalizedEmail =
+      typeof existingProfile.email === 'string' && existingProfile.email.trim().length > 0
+        ? existingProfile.email.trim()
+        : String(fallbackEmail || '').trim();
+
+    if (!normalizedEmail) {
+      throw new Error('Unable to update profile name because email is missing. Please sign out and sign in again.');
+    }
+
     await setDoc(
       userDocRef,
       {
         profile: {
           displayName,
+          email: normalizedEmail,
         },
       },
       { merge: true }
