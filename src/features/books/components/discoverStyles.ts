@@ -105,6 +105,9 @@ export const discoverStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  resultsList: {
+    flex: 1,
+  },
   bookItem: {
     flexDirection: 'row',
     alignItems: 'center',

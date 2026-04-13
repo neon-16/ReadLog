@@ -109,6 +109,7 @@ export default function Discover() {
                 <DiscoverErrorState message={suggestionsError} onRetry={loadDiscoverSuggestions} />
               ) : (
                 <FlatList
+                  style={styles.resultsList}
                   data={discoverSuggestions}
                   keyExtractor={keyExtractor}
                   renderItem={renderItem}
@@ -141,6 +142,7 @@ export default function Discover() {
                 <DiscoverErrorState message={searchError} onRetry={() => handleSearch(searchQuery)} />
               ) : (
                 <FlatList
+                  style={styles.resultsList}
                   data={searchResults}
                   keyExtractor={keyExtractor}
                   renderItem={renderItem}
