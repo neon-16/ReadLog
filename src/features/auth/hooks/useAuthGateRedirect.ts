@@ -13,7 +13,12 @@ export function useAuthGateRedirect() {
     const firstSegment = segments[0] as string;
     const isAuthScreen = firstSegment === 'login' || firstSegment === 'signup';
     const isPasswordResetScreen = firstSegment === 'reset-password';
-    const isPublicScreen = firstSegment === 'index' || firstSegment === 'splash' || isAuthScreen || isPasswordResetScreen;
+    const isPublicScreen =
+      firstSegment === 'index' ||
+      firstSegment === 'landing' ||
+      firstSegment === 'splash' ||
+      isAuthScreen ||
+      isPasswordResetScreen;
 
     if (!user && !isPublicScreen) {
       router.replace('/login');

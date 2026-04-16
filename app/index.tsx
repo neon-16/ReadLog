@@ -1,5 +1,10 @@
-import { Redirect } from 'expo-router';
+import { Redirect, type Href } from 'expo-router';
+import { Platform } from 'react-native';
 
 export default function Index() {
-  return <Redirect href="/splash" />;
+  if (Platform.OS !== 'web') {
+    return <Redirect href="/splash" />;
+  }
+
+  return <Redirect href={'/landing' as Href} />;
 }
