@@ -29,6 +29,14 @@ function toHomeBook(input: unknown): HomeBook {
     return fallback;
   };
 
+  const readBoolean = (key: string, fallback = false) => {
+    const value = book[key];
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    return fallback;
+  };
+
   return {
     id: readString('id', ''),
     title: readString('title', 'Untitled'),
@@ -38,6 +46,7 @@ function toHomeBook(input: unknown): HomeBook {
     status: readString('status', 'want_to_read'),
     totalPages: readNumber('totalPages', 0),
     currentPage: readNumber('currentPage', 0),
+    pendingSync: readBoolean('pendingSync', false),
   };
 }
 

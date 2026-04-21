@@ -2,15 +2,9 @@ import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-function getInitialOnlineState() {
-  if (Platform.OS === 'web' && typeof navigator !== 'undefined') {
-    return navigator.onLine;
-  }
-  return true;
-}
-
 export default function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(getInitialOnlineState);
+  // Keep initial value stable between SSR and client hydration to avoid mismatch.
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {

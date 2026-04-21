@@ -116,30 +116,9 @@ export function useStatsData(user: User | null) {
       }
 
       if (isOffline) {
-        try {
-          const data = await getBookStats();
-          if (requestId !== statsRequestIdRef.current) {
-            return;
-          }
-
-          setStats(data);
-          setUsingCachedStats(false);
-          setStatsError(null);
-          hasLoadedStatsRef.current = true;
-
-          try {
-            await AsyncStorage.setItem(
-              getStatsCacheKey(user.uid),
-              JSON.stringify({ stats: data, timestamp: Date.now() } satisfies StatsCachePayload)
-            );
-          } catch {
-            // Ignore cache persistence failures and keep UI responsive.
-          }
-        } catch {
-          const hasCachedStats = await loadCachedStats(requestId);
-          if (requestId === statsRequestIdRef.current && !hasCachedStats) {
-            setStatsError('You are offline and no cached stats are available yet.');
-          }
+        const hasCachedStats = await loadCachedStats(requestId);
+        if (requestId === statsRequestIdRef.current && !hasCachedStats) {
+          setStatsError('You are offline and no cached stats are available yet.');
         }
         return;
       }
@@ -198,7 +177,8 @@ export function useStatsData(user: User | null) {
         displayName: normalizedDisplayName,
         email: profile?.email || user.email || '',
       });
-      await refreshProfile();
+      // Keep save flow responsive; refresh profile in background.
+      void refreshProfile();
     } finally {
       setSavingProfile(false);
     }

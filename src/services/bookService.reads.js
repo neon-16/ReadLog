@@ -16,6 +16,7 @@ import {
 import { auth, db } from '@/src/services/firebaseConfig';
 import {
     doc,
+    getCountFromServer,
     getDoc,
     getDocs,
     limit,
@@ -174,7 +175,13 @@ export function subscribeBooksByStatus(status, {
     activeUnsubscribe = onSnapshot(
       booksQuery,
       (snapshot) => {
-        const books = mapBooksFromSnapshot(snapshot);
+        const books = snapshot.docs.map((snapshotDoc) => {
+          const book = Book.fromFirestore(snapshotDoc);
+          return {
+            ...book,
+            pendingSync: snapshotDoc.metadata?.hasPendingWrites === true,
+          };
+        });
         onUpdate?.(shouldSort ? books.sort(sortByCreatedAtDesc) : books);
       },
       (error) => {
@@ -206,16 +213,16 @@ export async function getBookStats() {
       wantToReadSnapshot,
       finishedSnapshot,
     ] = await Promise.all([
-      getDocs(booksRef),
-      getDocs(query(booksRef, where('status', '==', 'reading'))),
-      getDocs(query(booksRef, where('status', '==', 'want_to_read'))),
-      getDocs(query(booksRef, where('status', '==', 'finished'))),
+      getCountFromServer(booksRef),
+      getCountFromServer(query(booksRef, where('status', '==', 'reading'))),
+      getCountFromServer(query(booksRef, where('status', '==', 'want_to_read'))),
+      getCountFromServer(query(booksRef, where('status', '==', 'finished'))),
     ]);
 
-    const total = totalSnapshot.size;
-    const reading = readingSnapshot.size;
-    const wantToRead = wantToReadSnapshot.size;
-    const finished = finishedSnapshot.size;
+    const total = totalSnapshot.data().count;
+    const reading = readingSnapshot.data().count;
+    const wantToRead = wantToReadSnapshot.data().count;
+    const finished = finishedSnapshot.data().count;
 
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');

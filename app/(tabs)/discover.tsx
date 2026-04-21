@@ -12,7 +12,7 @@ import { discoverStyles as styles } from '@/src/features/books/components/discov
 import { useDiscoverBooks } from '@/src/features/books/hooks/useDiscoverBooks';
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, Platform, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Text, View } from 'react-native';
 import AppHeader from '../../components/shared/AppHeader';
 
 const ROW_HEIGHT = 126;
@@ -108,6 +108,7 @@ export default function Discover() {
                   data={discoverSuggestions}
                   keyExtractor={keyExtractor}
                   renderItem={renderItem}
+                  keyboardDismissMode="on-drag"
                   initialNumToRender={8}
                   maxToRenderPerBatch={8}
                   updateCellsBatchingPeriod={50}
@@ -141,6 +142,7 @@ export default function Discover() {
                   data={searchResults}
                   keyExtractor={keyExtractor}
                   renderItem={renderItem}
+                  keyboardDismissMode="on-drag"
                   onEndReachedThreshold={0.5}
                   onEndReached={loadNextPage}
                   initialNumToRender={8}
@@ -166,13 +168,5 @@ export default function Discover() {
     </View>
   );
 
-  if (Platform.OS === 'web') {
-    return content;
-  }
-
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      {content}
-    </TouchableWithoutFeedback>
-  );
+  return content;
 }

@@ -7,4 +7,5 @@ export type HomeBook = {
   status: 'reading' | 'want_to_read' | 'finished' | string;
   totalPages: number;
   currentPage: number;
+  pendingSync?: boolean;
 };

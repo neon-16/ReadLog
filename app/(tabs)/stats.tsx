@@ -37,7 +37,7 @@ export default function Stats() {
           <Text style={styles.headerTitle}>Reading Stats</Text>
           {usingCachedStats && (
             <Text style={{ color: '#6B7280', marginTop: 6, fontSize: 12 }}>
-              Offline mode: showing cached stats
+              Offline mode: showing cached stats. Stats refresh when you are back online.
             </Text>
           )}
         </View>

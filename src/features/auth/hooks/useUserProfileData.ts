@@ -17,6 +17,18 @@ type CachedProfile = {
 
 const PROFILE_CACHE_TTL_MS = 60 * 1000;
 const profileCache = new Map<string, CachedProfile>();
+const profileListeners = new Map<string, Set<(profile: UserProfile | null) => void>>();
+
+function emitProfileUpdate(uid: string, profile: UserProfile | null) {
+  const listeners = profileListeners.get(uid);
+  if (!listeners) {
+    return;
+  }
+
+  for (const listener of listeners) {
+    listener(profile);
+  }
+}
 
 function isFresh(cacheEntry: CachedProfile | undefined): boolean {
   if (!cacheEntry) {
@@ -30,6 +42,33 @@ export function useUserProfileData(user: User | null, options: UseUserProfileDat
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
+    }
+
+    const listeners = profileListeners.get(user.uid) || new Set<(profile: UserProfile | null) => void>();
+    const listener = (nextProfile: UserProfile | null) => {
+      setProfile(nextProfile);
+      setProfileLoading(false);
+    };
+
+    listeners.add(listener);
+    profileListeners.set(user.uid, listeners);
+
+    return () => {
+      const existing = profileListeners.get(user.uid);
+      if (!existing) {
+        return;
+      }
+
+      existing.delete(listener);
+      if (existing.size === 0) {
+        profileListeners.delete(user.uid);
+      }
+    };
+  }, [user?.uid]);
 
   const loadProfile = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -67,6 +106,7 @@ export function useUserProfileData(user: User | null, options: UseUserProfileDat
       if (requestId === requestIdRef.current) {
         setProfile(normalizedProfile);
         profileCache.set(user.uid, { profile: normalizedProfile, timestamp: Date.now() });
+        emitProfileUpdate(user.uid, normalizedProfile);
       }
     } catch {
       if (requestId === requestIdRef.current) {
@@ -98,6 +138,7 @@ export function useUserProfileData(user: User | null, options: UseUserProfileDat
     setProfile(nextProfile);
     if (user) {
       profileCache.set(user.uid, { profile: nextProfile, timestamp: Date.now() });
+      emitProfileUpdate(user.uid, nextProfile);
     }
   }, [user]);
 

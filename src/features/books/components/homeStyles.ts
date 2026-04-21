@@ -70,6 +70,20 @@ export const homeStyles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
+  pendingBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 8,
+  },
+  pendingText: {
+    fontSize: 10,
+    color: '#92400E',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
   genreBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#EFF6FF',

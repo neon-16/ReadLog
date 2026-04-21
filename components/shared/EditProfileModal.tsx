@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Button from './Button';
 import Input from './Input';
 
@@ -52,7 +52,6 @@ export default function EditProfileModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <Pressable style={styles.overlayBackdrop} onPress={onClose} />
         <View style={styles.modalContent}>
           <Text style={styles.title}>Edit Profile</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -99,10 +98,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    position: 'relative',
-  },
-  overlayBackdrop: {
-    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {

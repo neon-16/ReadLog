@@ -7,7 +7,6 @@ import {
     withTimeout,
 } from '@/src/services/bookService.core';
 import { db } from '@/src/services/firebaseConfig';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     deleteDoc,
     doc,
@@ -18,82 +17,6 @@ import {
     updateDoc,
     writeBatch
 } from 'firebase/firestore';
-
-const STATS_CACHE_PREFIX = 'stats:cache:';
-
-function getStatsCacheKey(userId) {
-  return `${STATS_CACHE_PREFIX}${userId || 'guest'}`;
-}
-
-function toSafeCount(value) {
-  return Math.max(0, Number(value) || 0);
-}
-
-function normalizeCachedStats(stats) {
-  const total = toSafeCount(stats?.total);
-  const reading = toSafeCount(stats?.reading);
-  const wantToRead = toSafeCount(stats?.wantToRead);
-  const finished = toSafeCount(stats?.finished);
-  const readingGoal = Math.max(1, Number(stats?.readingGoal) || 24);
-
-  return {
-    total,
-    reading,
-    wantToRead,
-    finished,
-    readingGoal,
-    goalProgress: readingGoal > 0 ? Math.round((finished / readingGoal) * 100) : 0,
-  };
-}
-
-async function mutateCachedStats(userId, mutateFn) {
-  try {
-    const cacheKey = getStatsCacheKey(userId);
-    const raw = await AsyncStorage.getItem(cacheKey);
-    if (!raw) {
-      return;
-    }
-
-    const parsed = JSON.parse(raw);
-    const currentStats = normalizeCachedStats(parsed?.stats);
-    const mutatedStats = mutateFn(currentStats);
-    if (!mutatedStats) {
-      return;
-    }
-
-    const nextStats = normalizeCachedStats(mutatedStats);
-    await AsyncStorage.setItem(
-      cacheKey,
-      JSON.stringify({
-        stats: nextStats,
-        timestamp: Date.now(),
-      })
-    );
-  } catch {
-    // Cache synchronization should never block write operations.
-  }
-}
-
-function applyStatusDelta(stats, previousStatus, nextStatus) {
-  const prev = toSafeBookStatus(previousStatus);
-  const next = toSafeBookStatus(nextStatus);
-
-  if (prev === next) {
-    return stats;
-  }
-
-  const nextStats = { ...stats };
-
-  if (prev === 'reading') nextStats.reading = Math.max(0, nextStats.reading - 1);
-  if (prev === 'want_to_read') nextStats.wantToRead = Math.max(0, nextStats.wantToRead - 1);
-  if (prev === 'finished') nextStats.finished = Math.max(0, nextStats.finished - 1);
-
-  if (next === 'reading') nextStats.reading += 1;
-  if (next === 'want_to_read') nextStats.wantToRead += 1;
-  if (next === 'finished') nextStats.finished += 1;
-
-  return nextStats;
-}
 
 function toSafeBookStatus(value) {
   return ['want_to_read', 'reading', 'finished'].includes(value) ? value : 'want_to_read';
@@ -173,19 +96,6 @@ export async function addBook({ title, author, totalPages, genre, source, status
       }
     }
 
-    await mutateCachedStats(userId, (stats) => {
-      const nextStats = {
-        ...stats,
-        total: stats.total + 1,
-      };
-
-      if (defaultStatus === 'reading') nextStats.reading += 1;
-      if (defaultStatus === 'want_to_read') nextStats.wantToRead += 1;
-      if (defaultStatus === 'finished') nextStats.finished += 1;
-
-      return nextStats;
-    });
-
     return new Book({
       ...payload,
       id: payload.id,
@@ -198,6 +108,8 @@ export async function addBook({ title, author, totalPages, genre, source, status
 
 export async function updateBookProgress(bookId, { currentPage, totalPages }) {
   try {
+    const options = arguments.length > 2 ? arguments[2] : {};
+    const { deferWriteAck = false, ackTimeoutMs = 0 } = options;
     const userId = getAuthenticatedUserId();
 
     return await withTimeout(
@@ -227,14 +139,34 @@ export async function updateBookProgress(bookId, { currentPage, totalPages }) {
                 : 'want_to_read')
           : (safeCurrentPage > 0 ? 'reading' : 'want_to_read');
 
-        await updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
+        const persistPromise = updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
           currentPage: safeCurrentPage,
           totalPages: safeTotalPages,
           progress: nextProgress,
           status: nextStatus,
         });
 
-        await mutateCachedStats(userId, (stats) => applyStatusDelta(stats, book.status, nextStatus));
+        if (deferWriteAck) {
+          void persistPromise.catch(() => {
+            // Deferred mode keeps the UI responsive while write syncs in background.
+          });
+        } else {
+          const safeAckTimeoutMs = Math.max(0, Number(ackTimeoutMs) || 0);
+          if (safeAckTimeoutMs > 0) {
+            try {
+              await withTimeout(persistPromise, safeAckTimeoutMs, 'Write acknowledgment timed out');
+            } catch (error) {
+              const message = error instanceof Error ? error.message : '';
+              if (message === 'Write acknowledgment timed out') {
+                void persistPromise.catch(() => {});
+              } else {
+                throw error;
+              }
+            }
+          } else {
+            await persistPromise;
+          }
+        }
 
         return new Book({
           ...book.toFirestore(),
@@ -255,6 +187,8 @@ export async function updateBookProgress(bookId, { currentPage, totalPages }) {
 
 export async function updateBookStatus(bookId, newStatus) {
   try {
+    const options = arguments.length > 2 ? arguments[2] : {};
+    const { deferWriteAck = false, ackTimeoutMs = 0 } = options;
     const userId = getAuthenticatedUserId();
     const snapshotDoc = await getBookDocumentById(bookId);
     if (!snapshotDoc) {
@@ -269,13 +203,33 @@ export async function updateBookStatus(bookId, newStatus) {
       createdAt: book.createdAt,
     });
 
-    await updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
+    const persistPromise = updateDoc(doc(db, 'users', userId, 'books', snapshotDoc.id), {
       status: updatedBook.status,
       currentPage: updatedBook.currentPage,
       progress: updatedBook.progress,
     });
 
-    await mutateCachedStats(userId, (stats) => applyStatusDelta(stats, book.status, updatedBook.status));
+    if (deferWriteAck) {
+      void persistPromise.catch(() => {
+        // Deferred mode keeps the UI responsive while write syncs in background.
+      });
+    } else {
+      const safeAckTimeoutMs = Math.max(0, Number(ackTimeoutMs) || 0);
+      if (safeAckTimeoutMs > 0) {
+        try {
+          await withTimeout(persistPromise, safeAckTimeoutMs, 'Write acknowledgment timed out');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : '';
+          if (message === 'Write acknowledgment timed out') {
+            void persistPromise.catch(() => {});
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        await persistPromise;
+      }
+    }
 
     return updatedBook;
   } catch (error) {
@@ -323,24 +277,6 @@ export async function updateAllBooksStatus(newStatus) {
       await batch.commit();
     }
 
-    await mutateCachedStats(userId, (stats) => {
-      if (safeStatus === 'finished') {
-        return {
-          ...stats,
-          reading: 0,
-          wantToRead: 0,
-          finished: stats.total,
-        };
-      }
-
-      return {
-        ...stats,
-        reading: 0,
-        wantToRead: stats.total,
-        finished: 0,
-      };
-    });
-
     return { success: true, updatedCount, status: safeStatus };
   } catch (error) {
     throw new Error(`Failed to update all books status: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -358,19 +294,6 @@ export async function deleteBook(bookId) {
     const book = Book.fromFirestore(snapshotDoc);
 
     await deleteDoc(doc(db, 'users', userId, 'books', snapshotDoc.id));
-
-    await mutateCachedStats(userId, (stats) => {
-      const nextStats = {
-        ...stats,
-        total: Math.max(0, stats.total - 1),
-      };
-
-      if (book.status === 'reading') nextStats.reading = Math.max(0, nextStats.reading - 1);
-      if (book.status === 'want_to_read') nextStats.wantToRead = Math.max(0, nextStats.wantToRead - 1);
-      if (book.status === 'finished') nextStats.finished = Math.max(0, nextStats.finished - 1);
-
-      return nextStats;
-    });
 
     return { success: true };
   } catch (error) {
@@ -390,14 +313,6 @@ export async function clearAllBooks() {
     });
 
     await batch.commit();
-
-    await mutateCachedStats(userId, (stats) => ({
-      ...stats,
-      total: 0,
-      reading: 0,
-      wantToRead: 0,
-      finished: 0,
-    }));
 
     return { success: true };
   } catch (error) {

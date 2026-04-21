@@ -24,6 +24,11 @@ export const HomeBookCard = memo(function HomeBookCard({ book, isFinished, style
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
+        {book.pendingSync ? (
+          <View style={styles.pendingBadge}>
+            <Text style={styles.pendingText}>SYNC PENDING</Text>
+          </View>
+        ) : null}
         <View style={styles.genreBadge}>
           <Text style={styles.genreText}>{book.genre.toUpperCase()}</Text>
         </View>

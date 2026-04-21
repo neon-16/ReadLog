@@ -79,11 +79,6 @@ export function useBookDetailData({ user, bookId, isOffline }: UseBookDetailData
   const handleSaveProgress = useCallback(async () => {
     if (!book) return;
 
-    if (isOffline) {
-      setError('Progress saving requires an internet connection');
-      return;
-    }
-
     try {
       if (!currentPage) {
         setError(`Current page must be between 1 and ${book.totalPages}`);
@@ -101,6 +96,9 @@ export function useBookDetailData({ user, bookId, isOffline }: UseBookDetailData
       const updatedBook = await updateBookProgress(book.id, {
         currentPage: parsedPage,
         totalPages: book.totalPages,
+      }, {
+        deferWriteAck: isOffline,
+        ackTimeoutMs: isOffline ? 0 : 1800,
       });
       setBook(updatedBook);
       setCurrentPage(String(updatedBook.currentPage));
