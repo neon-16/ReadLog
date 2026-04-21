@@ -1,6 +1,8 @@
+import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
 import { useUserProfileData } from '@/src/features/auth/hooks/useUserProfileData';
 import { getBookStats } from '@/src/services/bookService';
 import { updateUserDisplayName } from '@/src/services/userService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import type { User } from 'firebase/auth';
 import { useCallback, useRef, useState } from 'react';
@@ -14,6 +16,31 @@ type StatsState = {
   goalProgress: number;
 };
 
+type StatsCachePayload = {
+  stats: StatsState;
+  timestamp: number;
+};
+
+const STATS_CACHE_PREFIX = 'stats:cache:';
+
+const getStatsCacheKey = (uid?: string) => `${STATS_CACHE_PREFIX}${uid || 'guest'}`;
+
+function isStatsState(value: unknown): value is StatsState {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const stats = value as Partial<StatsState>;
+  return (
+    typeof stats.total === 'number' &&
+    typeof stats.reading === 'number' &&
+    typeof stats.wantToRead === 'number' &&
+    typeof stats.finished === 'number' &&
+    typeof stats.readingGoal === 'number' &&
+    typeof stats.goalProgress === 'number'
+  );
+}
+
 const toTitleCaseName = (value: string) =>
   value
     .trim()
@@ -23,6 +50,7 @@ const toTitleCaseName = (value: string) =>
     .join(' ');
 
 export function useStatsData(user: User | null) {
+  const { isOffline } = useNetworkStatus();
   const {
     profile,
     profileLoading,
@@ -40,8 +68,35 @@ export function useStatsData(user: User | null) {
   });
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [usingCachedStats, setUsingCachedStats] = useState(false);
   const hasLoadedStatsRef = useRef(false);
   const statsRequestIdRef = useRef(0);
+
+  const loadCachedStats = useCallback(async (requestId: number): Promise<boolean> => {
+    if (!user) {
+      return false;
+    }
+
+    try {
+      const raw = await AsyncStorage.getItem(getStatsCacheKey(user.uid));
+      if (!raw || requestId !== statsRequestIdRef.current) {
+        return false;
+      }
+
+      const parsed = JSON.parse(raw) as Partial<StatsCachePayload>;
+      if (!isStatsState(parsed?.stats)) {
+        return false;
+      }
+
+      setStats(parsed.stats);
+      setStatsError(null);
+      setUsingCachedStats(true);
+      hasLoadedStatsRef.current = true;
+      return true;
+    } catch {
+      return false;
+    }
+  }, [user]);
 
   const fetchStats = useCallback(async (showFullLoader = false) => {
     const requestId = ++statsRequestIdRef.current;
@@ -50,7 +105,48 @@ export function useStatsData(user: User | null) {
       if (showFullLoader) {
         setStatsLoading(true);
       }
+
+      if (!user) {
+        if (requestId === statsRequestIdRef.current) {
+          setStatsLoading(false);
+          setStatsError(null);
+          setUsingCachedStats(false);
+        }
+        return;
+      }
+
+      if (isOffline) {
+        try {
+          const data = await getBookStats();
+          if (requestId !== statsRequestIdRef.current) {
+            return;
+          }
+
+          setStats(data);
+          setUsingCachedStats(false);
+          setStatsError(null);
+          hasLoadedStatsRef.current = true;
+
+          try {
+            await AsyncStorage.setItem(
+              getStatsCacheKey(user.uid),
+              JSON.stringify({ stats: data, timestamp: Date.now() } satisfies StatsCachePayload)
+            );
+          } catch {
+            // Ignore cache persistence failures and keep UI responsive.
+          }
+        } catch {
+          const hasCachedStats = await loadCachedStats(requestId);
+          if (requestId === statsRequestIdRef.current && !hasCachedStats) {
+            setStatsError('You are offline and no cached stats are available yet.');
+          }
+        }
+        return;
+      }
+
+      setUsingCachedStats(false);
       setStatsError(null);
+
       const data = await getBookStats();
       if (requestId !== statsRequestIdRef.current) {
         return;
@@ -58,8 +154,17 @@ export function useStatsData(user: User | null) {
 
       setStats(data);
       hasLoadedStatsRef.current = true;
+      try {
+        await AsyncStorage.setItem(
+          getStatsCacheKey(user.uid),
+          JSON.stringify({ stats: data, timestamp: Date.now() } satisfies StatsCachePayload)
+        );
+      } catch {
+        // Ignore cache persistence failures and keep UI responsive.
+      }
     } catch (fetchError) {
-      if (requestId === statsRequestIdRef.current) {
+      const hasCachedStats = await loadCachedStats(requestId);
+      if (requestId === statsRequestIdRef.current && !hasCachedStats) {
         setStatsError(fetchError instanceof Error ? fetchError.message : 'Failed to load stats');
       }
     } finally {
@@ -67,7 +172,7 @@ export function useStatsData(user: User | null) {
         setStatsLoading(false);
       }
     }
-  }, []);
+  }, [isOffline, loadCachedStats, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,6 +211,7 @@ export function useStatsData(user: User | null) {
     stats,
     statsLoading,
     statsError,
+    usingCachedStats,
     fetchStats,
     handleUpdateDisplayName,
   };

@@ -16,7 +16,6 @@ import {
 import { auth, db } from '@/src/services/firebaseConfig';
 import {
     doc,
-    getCountFromServer,
     getDoc,
     getDocs,
     limit,
@@ -207,16 +206,16 @@ export async function getBookStats() {
       wantToReadSnapshot,
       finishedSnapshot,
     ] = await Promise.all([
-      getCountFromServer(booksRef),
-      getCountFromServer(query(booksRef, where('status', '==', 'reading'))),
-      getCountFromServer(query(booksRef, where('status', '==', 'want_to_read'))),
-      getCountFromServer(query(booksRef, where('status', '==', 'finished'))),
+      getDocs(booksRef),
+      getDocs(query(booksRef, where('status', '==', 'reading'))),
+      getDocs(query(booksRef, where('status', '==', 'want_to_read'))),
+      getDocs(query(booksRef, where('status', '==', 'finished'))),
     ]);
 
-    const total = totalSnapshot.data().count;
-    const reading = readingSnapshot.data().count;
-    const wantToRead = wantToReadSnapshot.data().count;
-    const finished = finishedSnapshot.data().count;
+    const total = totalSnapshot.size;
+    const reading = readingSnapshot.size;
+    const wantToRead = wantToReadSnapshot.size;
+    const finished = finishedSnapshot.size;
 
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error('User not authenticated');

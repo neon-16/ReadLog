@@ -4,7 +4,7 @@ import { HomeBookCard, HomeBookSection, HomeErrorState } from '@/src/features/bo
 import { homeStyles as styles } from '@/src/features/books/components/homeStyles';
 import { useHomeData } from '@/src/features/books/hooks/useHomeData';
 import type { HomeBook } from '@/src/features/books/types';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
@@ -16,7 +16,6 @@ export default function Home() {
   const { user } = useAuth();
   const {
     profile,
-    refreshProfile,
     readingBooks,
     wantToReadBooks,
     finishedBooks,
@@ -24,12 +23,6 @@ export default function Home() {
     error,
     fetchBooks,
   } = useHomeData(user);
-
-  useFocusEffect(
-    useCallback(() => {
-      void refreshProfile();
-    }, [refreshProfile])
-  );
 
   const keyExtractor = useCallback((item: HomeBook) => item.id, []);
   const renderReadingItem = useCallback(({ item }: { item: HomeBook }) => <HomeBookCard book={item} styles={styles} />, []);

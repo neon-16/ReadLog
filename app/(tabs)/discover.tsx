@@ -34,7 +34,6 @@ export default function Discover() {
     handleSearch,
     clearRecentSearches,
     loadDiscoverSuggestions,
-    resetDiscoverState,
     loadNextPage,
     handleAddBook,
   } = useDiscoverBooks(user);
@@ -42,11 +41,7 @@ export default function Discover() {
   useFocusEffect(
     useCallback(() => {
       Keyboard.dismiss();
-
-      return () => {
-        resetDiscoverState();
-      };
-    }, [resetDiscoverState])
+    }, [])
   );
 
   const keyExtractor = useCallback(

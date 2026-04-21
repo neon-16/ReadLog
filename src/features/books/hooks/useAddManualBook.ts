@@ -1,3 +1,4 @@
+import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
 import { addBook } from '@/src/services/bookService';
 import { showAlert } from '@/utils/alert';
 import { router } from 'expo-router';
@@ -8,6 +9,12 @@ type ManualBookDraft = {
   title: string;
   author: string;
   totalPages: string;
+};
+
+const STATUS_TO_DB_STATUS: Record<string, 'reading' | 'want_to_read' | 'finished'> = {
+  Reading: 'reading',
+  'Want to Read': 'want_to_read',
+  Completed: 'finished',
 };
 
 function validateDraft(draft: ManualBookDraft): string | null {
@@ -36,6 +43,7 @@ function validateDraft(draft: ManualBookDraft): string | null {
 }
 
 export function useAddManualBook(user: User | null) {
+  const { isOffline } = useNetworkStatus();
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [totalPages, setTotalPages] = useState('');
@@ -63,6 +71,7 @@ export function useAddManualBook(user: User | null) {
     try {
       const pages = Number(totalPages.trim());
       const dbGenre = genre.toLowerCase();
+      const dbStatus = STATUS_TO_DB_STATUS[status] ?? 'reading';
 
       await addBook({
         title: title.trim(),
@@ -70,6 +79,10 @@ export function useAddManualBook(user: User | null) {
         totalPages: pages,
         genre: dbGenre,
         source: 'manual',
+        status: dbStatus,
+      }, {
+        deferWriteAck: isOffline,
+        ackTimeoutMs: isOffline ? 0 : 1800,
       });
 
       router.push({
@@ -81,7 +94,7 @@ export function useAddManualBook(user: User | null) {
     } finally {
       setIsSaving(false);
     }
-  }, [author, genre, title, totalPages, user]);
+  }, [author, genre, isOffline, status, title, totalPages, user]);
 
   return {
     title,

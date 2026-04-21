@@ -1,6 +1,7 @@
 import { useSettingsActions } from '@/src/features/settings/hooks/useSettingsActions';
 import { BookOpen, Database, Info, LogOut, Trash2 } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AppLogo from '../../components/shared/AppLogo';
 import Button from '../../components/shared/Button';
 import { showActionSheet } from '../../utils/alert';
 
@@ -79,7 +80,7 @@ export default function Settings() {
             <View style={styles.appInfoRow}>
               <View style={styles.appInfoLeft}>
                 <View style={styles.appIcon}>
-                  <BookOpen size={20} color="#FFFFFF" strokeWidth={2} />
+                  <AppLogo size={24} />
                 </View>
                 <Text style={styles.appName}>ReadLog</Text>
               </View>
@@ -202,10 +203,10 @@ const styles = StyleSheet.create({
   appIcon: {
     width: 40,
     height: 40,
-    backgroundColor: '#2563EB',
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   appName: {
     fontSize: 16,

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
-import { ArrowLeft, BookOpen, ChevronLeft, Search } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, Search } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import AppLogo from './AppLogo';
 
 interface AppHeaderProps {
   title?: string;
@@ -41,7 +42,7 @@ export default function AppHeader({
         </Pressable>
       ) : (
         <View style={styles.headerLeft}>
-          <BookOpen size={28} color="#2563EB" strokeWidth={2} />
+          <AppLogo size={28} />
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
       )}

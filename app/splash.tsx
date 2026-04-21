@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { BookMarked, WifiOff } from 'lucide-react-native';
+import AppLogo from '@/components/shared/AppLogo';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { useSplashRedirect } from '@/src/features/auth/hooks/useSplashRedirect';
+import { WifiOff } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function Splash() {
   const { user, loading } = useAuth();
@@ -11,7 +12,7 @@ export default function Splash() {
     <View style={styles.container}>
       {/* App Icon Container */}
       <View style={styles.iconContainer}>
-        <BookMarked size={64} color="#2563EB" strokeWidth={2} />
+        <AppLogo size={64} />
       </View>
       
       {/* App Name */}

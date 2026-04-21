@@ -1,47 +1,20 @@
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { clearAllBooks, updateAllBooksStatus } from '@/src/services/bookService';
 import type { DefaultBookStatus } from '@/src/services/userService';
-import { getUserDefaultBookStatus, updateUserDefaultBookStatus } from '@/src/services/userService';
+import { updateUserDefaultBookStatus } from '@/src/services/userService';
 import { showAlert } from '@/utils/alert';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 const LABEL_TO_DB_STATUS: Record<string, DefaultBookStatus> = {
   'Want to Read': 'want_to_read',
   Completed: 'finished',
 };
 
-const DB_STATUS_TO_LABEL: Record<DefaultBookStatus, string> = {
-  reading: 'Want to Read',
-  want_to_read: 'Want to Read',
-  finished: 'Completed',
-};
-
 export function useSettingsActions() {
-  const [defaultStatus, setDefaultStatus] = useState('Want to Read');
+  const [defaultStatus, setDefaultStatus] = useState('Choose');
   const [isUpdatingDefaultStatus, setIsUpdatingDefaultStatus] = useState(false);
   const { user, signOut } = useAuth();
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadDefaultStatus() {
-      if (!user?.uid) {
-        return;
-      }
-
-      const savedStatus = await getUserDefaultBookStatus(user.uid);
-      if (isMounted) {
-        setDefaultStatus(DB_STATUS_TO_LABEL[savedStatus] ?? 'Want to Read');
-      }
-    }
-
-    void loadDefaultStatus();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.uid]);
 
   const handleDefaultStatusChange = useCallback((nextStatusLabel: string) => {
     if (isUpdatingDefaultStatus || nextStatusLabel === defaultStatus) {
@@ -71,7 +44,7 @@ export function useSettingsActions() {
                 updateAllBooksStatus(dbStatus),
                   updateUserDefaultBookStatus(user.uid, dbStatus),
               ]);
-              setDefaultStatus(nextStatusLabel);
+              setDefaultStatus('Choose');
             } catch {
               showAlert('Error', 'Failed to update all book statuses. Please try again.');
             } finally {
