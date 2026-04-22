@@ -10,10 +10,11 @@ import type { HomeStyles } from './homeStyles';
 type BookCardProps = {
   book: HomeBook;
   isFinished?: boolean;
+  isOffline?: boolean;
   styles: HomeStyles;
 };
 
-export const HomeBookCard = memo(function HomeBookCard({ book, isFinished, styles }: BookCardProps) {
+export const HomeBookCard = memo(function HomeBookCard({ book, isFinished, isOffline = false, styles }: BookCardProps) {
   const handlePress = useCallback(() => {
     router.push({ pathname: '/book-detail', params: { bookId: book.id } });
   }, [book.id]);
@@ -24,7 +25,7 @@ export const HomeBookCard = memo(function HomeBookCard({ book, isFinished, style
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={1}>{book.title}</Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>{book.author}</Text>
-        {book.pendingSync ? (
+        {book.pendingSync && isOffline ? (
           <View style={styles.pendingBadge}>
             <Text style={styles.pendingText}>SYNC PENDING</Text>
           </View>

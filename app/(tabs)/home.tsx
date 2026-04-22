@@ -1,4 +1,5 @@
 import OfflineBanner from '@/src/core/components/OfflineBanner';
+import useNetworkStatus from '@/src/core/hooks/useNetworkStatus';
 import { useAuth } from '@/src/features/auth/AuthContext';
 import { HomeBookCard, HomeBookSection, HomeErrorState } from '@/src/features/books/components/HomeSections';
 import { homeStyles as styles } from '@/src/features/books/components/homeStyles';
@@ -14,6 +15,7 @@ const BOOK_ROW_HEIGHT = 144;
 
 export default function Home() {
   const { user } = useAuth();
+  const { isOffline } = useNetworkStatus();
   const {
     profile,
     readingBooks,
@@ -25,9 +27,18 @@ export default function Home() {
   } = useHomeData(user);
 
   const keyExtractor = useCallback((item: HomeBook) => item.id, []);
-  const renderReadingItem = useCallback(({ item }: { item: HomeBook }) => <HomeBookCard book={item} styles={styles} />, []);
-  const renderWantToReadItem = useCallback(({ item }: { item: HomeBook }) => <HomeBookCard book={item} styles={styles} />, []);
-  const renderFinishedItem = useCallback(({ item }: { item: HomeBook }) => <HomeBookCard book={item} isFinished styles={styles} />, []);
+  const renderReadingItem = useCallback(
+    ({ item }: { item: HomeBook }) => <HomeBookCard book={item} isOffline={isOffline} styles={styles} />,
+    [isOffline]
+  );
+  const renderWantToReadItem = useCallback(
+    ({ item }: { item: HomeBook }) => <HomeBookCard book={item} isOffline={isOffline} styles={styles} />,
+    [isOffline]
+  );
+  const renderFinishedItem = useCallback(
+    ({ item }: { item: HomeBook }) => <HomeBookCard book={item} isFinished isOffline={isOffline} styles={styles} />,
+    [isOffline]
+  );
   const getItemLayout = useCallback(
     (_: ArrayLike<HomeBook> | null | undefined, index: number) => ({
       length: BOOK_ROW_HEIGHT,
