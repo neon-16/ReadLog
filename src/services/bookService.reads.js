@@ -174,6 +174,7 @@ export function subscribeBooksByStatus(status, {
   const subscribe = (booksQuery, shouldSort = false) => {
     activeUnsubscribe = onSnapshot(
       booksQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
         const books = snapshot.docs.map((snapshotDoc) => {
           const book = Book.fromFirestore(snapshotDoc);
